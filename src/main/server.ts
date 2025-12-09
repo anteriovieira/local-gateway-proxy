@@ -7,6 +7,8 @@ const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const httpProxy = require('http-proxy')
+const zlib = require('zlib')
+const { Buffer } = require('buffer')
 
 const proxy = httpProxy.createProxyServer({})
 
@@ -218,23 +220,120 @@ export class ServerManager {
                             req.url = targetPath
 
                             // Add response logging
+                            let responseBody = ''
+                            let responseChunks: Buffer[] = []
+                            let statusCode = res.statusCode || 200
+                            let contentEncoding = ''
+
+                            // Helper function to decode response body
+                            const decodeResponseBody = (chunks: Buffer[], encoding: string): string => {
+                                if (chunks.length === 0) return ''
+                                
+                                try {
+                                    const buffer = Buffer.concat(chunks)
+                                    
+                                    // http-proxy typically auto-decompresses, but check content-encoding anyway
+                                    let dataToDecode: Buffer = buffer
+                                    
+                                    // Only try decompression if we have an encoding header and data
+                                    if (encoding && buffer.length > 0) {
+                                        try {
+                                            if (encoding === 'gzip') {
+                                                dataToDecode = zlib.gunzipSync(buffer)
+                                            } else if (encoding === 'deflate') {
+                                                dataToDecode = zlib.inflateSync(buffer)
+                                            } else if (encoding === 'br') {
+                                                dataToDecode = zlib.brotliDecompressSync(buffer)
+                                            }
+                                        } catch (decompErr) {
+                                            // Decompression failed, try with buffer as-is
+                                            // (likely already decompressed by http-proxy)
+                                        }
+                                    }
+                                    
+                                    // Try UTF-8 decoding
+                                    try {
+                                        const text = dataToDecode.toString('utf8')
+                                        // Basic validation: check if it's mostly printable characters
+                                        // Allow some control chars (newlines, tabs, etc.)
+                                        const nonPrintableCount = (text.match(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g) || []).length
+                                        const totalLength = text.length
+                                        
+                                        // If less than 5% non-printable, consider it valid text
+                                        if (totalLength === 0 || nonPrintableCount / totalLength < 0.05) {
+                                            return text
+                                        }
+                                    } catch (utf8Err) {
+                                        // UTF-8 decode failed, will fall through to binary handling
+                                    }
+                                    
+                                    // If it looks like binary data, check content-type to decide
+                                    // For JSON/text responses, force UTF-8 even if it looks binary
+                                    // This handles cases where valid UTF-8 might have some control chars
+                                    try {
+                                        const text = dataToDecode.toString('utf8')
+                                        // For JSON, be more lenient
+                                        if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+                                            return text
+                                        }
+                                    } catch (e) {
+                                        // Ignore
+                                    }
+                                    
+                                    // Last resort: return as-is with UTF-8, even if it might look garbled
+                                    // This is better than showing base64 for text responses
+                                    return dataToDecode.toString('utf8')
+                                } catch (err: any) {
+                                    return `<unable to decode response body: ${err.message}>`
+                                }
+                            }
+
+                            // Listen to proxy response event to capture headers
+                            const proxyResHandler = (proxyRes: any) => {
+                                statusCode = proxyRes.statusCode || 200
+                                contentEncoding = (proxyRes.headers['content-encoding'] || res.getHeader('content-encoding') || '').toString().toLowerCase()
+                            }
+
+                            proxy.once('proxyRes', proxyResHandler)
+                            
+                            // Also check response headers as fallback
+                            const originalSetHeader = res.setHeader.bind(res)
+                            res.setHeader = function(name: string, value: any) {
+                                if (name.toLowerCase() === 'content-encoding' && !contentEncoding) {
+                                    contentEncoding = value.toString().toLowerCase()
+                                }
+                                return originalSetHeader(name, value)
+                            }
+
+                            // Intercept response data at the proxy level
                             const originalWrite = res.write.bind(res)
                             const originalEnd = res.end.bind(res)
-                            let responseBody = ''
-                            let statusCode = res.statusCode || 200
 
-                            // Intercept response data
                             res.write = function(chunk: any, encoding?: any) {
                                 if (chunk) {
-                                    responseBody += chunk.toString()
+                                    if (Buffer.isBuffer(chunk)) {
+                                        responseChunks.push(chunk)
+                                    } else {
+                                        responseChunks.push(Buffer.from(chunk, encoding || 'utf8'))
+                                    }
                                 }
                                 return originalWrite(chunk, encoding)
                             }
 
                             res.end = function(chunk?: any, encoding?: any) {
                                 if (chunk) {
-                                    responseBody += chunk.toString()
+                                    if (Buffer.isBuffer(chunk)) {
+                                        responseChunks.push(chunk)
+                                    } else {
+                                        responseChunks.push(Buffer.from(chunk, encoding || 'utf8'))
+                                    }
                                 }
+                                
+                                // Decode response body
+                                if (responseChunks.length > 0) {
+                                    responseBody = decodeResponseBody(responseChunks, contentEncoding)
+                                }
+                                
                                 statusCode = res.statusCode || statusCode
                                 
                                 // Calculate request duration
@@ -284,14 +383,6 @@ export class ServerManager {
                                 
                                 return originalEnd(chunk, encoding)
                             }
-
-                            // Listen to proxy response event
-                            const proxyResHandler = (proxyRes: any) => {
-                                statusCode = proxyRes.statusCode || 200
-                                // Status code will be logged in res.end handler
-                            }
-
-                            proxy.once('proxyRes', proxyResHandler)
 
                             proxy.web(req, res, {
                                 target: targetBase,
@@ -385,23 +476,120 @@ export class ServerManager {
                             req.url = targetPath
 
                             // Add response logging for bypass
+                            let responseBody = ''
+                            let responseChunks: Buffer[] = []
+                            let statusCode = res.statusCode || 200
+                            let contentEncoding = ''
+
+                            // Helper function to decode response body
+                            const decodeResponseBody = (chunks: Buffer[], encoding: string): string => {
+                                if (chunks.length === 0) return ''
+                                
+                                try {
+                                    const buffer = Buffer.concat(chunks)
+                                    
+                                    // http-proxy typically auto-decompresses, but check content-encoding anyway
+                                    let dataToDecode: Buffer = buffer
+                                    
+                                    // Only try decompression if we have an encoding header and data
+                                    if (encoding && buffer.length > 0) {
+                                        try {
+                                            if (encoding === 'gzip') {
+                                                dataToDecode = zlib.gunzipSync(buffer)
+                                            } else if (encoding === 'deflate') {
+                                                dataToDecode = zlib.inflateSync(buffer)
+                                            } else if (encoding === 'br') {
+                                                dataToDecode = zlib.brotliDecompressSync(buffer)
+                                            }
+                                        } catch (decompErr) {
+                                            // Decompression failed, try with buffer as-is
+                                            // (likely already decompressed by http-proxy)
+                                        }
+                                    }
+                                    
+                                    // Try UTF-8 decoding
+                                    try {
+                                        const text = dataToDecode.toString('utf8')
+                                        // Basic validation: check if it's mostly printable characters
+                                        // Allow some control chars (newlines, tabs, etc.)
+                                        const nonPrintableCount = (text.match(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g) || []).length
+                                        const totalLength = text.length
+                                        
+                                        // If less than 5% non-printable, consider it valid text
+                                        if (totalLength === 0 || nonPrintableCount / totalLength < 0.05) {
+                                            return text
+                                        }
+                                    } catch (utf8Err) {
+                                        // UTF-8 decode failed, will fall through to binary handling
+                                    }
+                                    
+                                    // If it looks like binary data, check content-type to decide
+                                    // For JSON/text responses, force UTF-8 even if it looks binary
+                                    // This handles cases where valid UTF-8 might have some control chars
+                                    try {
+                                        const text = dataToDecode.toString('utf8')
+                                        // For JSON, be more lenient
+                                        if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+                                            return text
+                                        }
+                                    } catch (e) {
+                                        // Ignore
+                                    }
+                                    
+                                    // Last resort: return as-is with UTF-8, even if it might look garbled
+                                    // This is better than showing base64 for text responses
+                                    return dataToDecode.toString('utf8')
+                                } catch (err: any) {
+                                    return `<unable to decode response body: ${err.message}>`
+                                }
+                            }
+
+                            // Listen to proxy response event to capture headers
+                            const proxyResHandler = (proxyRes: any) => {
+                                statusCode = proxyRes.statusCode || 200
+                                contentEncoding = (proxyRes.headers['content-encoding'] || res.getHeader('content-encoding') || '').toString().toLowerCase()
+                            }
+
+                            proxy.once('proxyRes', proxyResHandler)
+                            
+                            // Also check response headers as fallback
+                            const originalSetHeader = res.setHeader.bind(res)
+                            res.setHeader = function(name: string, value: any) {
+                                if (name.toLowerCase() === 'content-encoding' && !contentEncoding) {
+                                    contentEncoding = value.toString().toLowerCase()
+                                }
+                                return originalSetHeader(name, value)
+                            }
+
+                            // Intercept response data at the proxy level
                             const originalWrite = res.write.bind(res)
                             const originalEnd = res.end.bind(res)
-                            let responseBody = ''
-                            let statusCode = res.statusCode || 200
 
-                            // Intercept response data
                             res.write = function(chunk: any, encoding?: any) {
                                 if (chunk) {
-                                    responseBody += chunk.toString()
+                                    if (Buffer.isBuffer(chunk)) {
+                                        responseChunks.push(chunk)
+                                    } else {
+                                        responseChunks.push(Buffer.from(chunk, encoding || 'utf8'))
+                                    }
                                 }
                                 return originalWrite(chunk, encoding)
                             }
 
                             res.end = function(chunk?: any, encoding?: any) {
                                 if (chunk) {
-                                    responseBody += chunk.toString()
+                                    if (Buffer.isBuffer(chunk)) {
+                                        responseChunks.push(chunk)
+                                    } else {
+                                        responseChunks.push(Buffer.from(chunk, encoding || 'utf8'))
+                                    }
                                 }
+                                
+                                // Decode response body
+                                if (responseChunks.length > 0) {
+                                    responseBody = decodeResponseBody(responseChunks, contentEncoding)
+                                }
+                                
                                 statusCode = res.statusCode || statusCode
                                 
                                 // Calculate request duration
@@ -451,13 +639,6 @@ export class ServerManager {
                                 
                                 return originalEnd(chunk, encoding)
                             }
-
-                            // Listen to proxy response event
-                            const proxyResHandler = (proxyRes: any) => {
-                                statusCode = proxyRes.statusCode || 200
-                            }
-
-                            proxy.once('proxyRes', proxyResHandler)
 
                             proxy.web(req, res, {
                                 target: targetBase,
