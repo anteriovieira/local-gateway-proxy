@@ -3,8 +3,11 @@ import { ApiLogEntry } from '../../types'
 import {
     Search, X, Copy,
     RefreshCw, Trash2, Terminal,
-    ListRestart
+    ListRestart, ArrowRight,
+    SplitIcon
 } from 'lucide-react'
+import { highlight, languages } from 'prismjs'
+import 'prismjs/components/prism-json'
 import { cn } from '../../utils'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui/resizable'
 
@@ -44,7 +47,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
             let groupKey: string
 
             if (logDate.toDateString() === today.toDateString()) {
-                groupKey = 'Today'
+                groupKey = 'Requests'
             } else if (logDate.toDateString() === yesterday.toDateString()) {
                 groupKey = 'Yesterday'
             } else {
@@ -259,7 +262,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
             <ResizablePanelGroup direction="horizontal" className="flex-1">
                 {/* Left Panel - Log List */}
                 <ResizablePanel defaultSize={40} minSize={20}>
-                    <div className="h-full overflow-y-auto border-r border-zinc-800" ref={scrollContainerRef}>
+                    <div className="h-full overflow-y-auto border-r border-zinc-800 custom-scrollbar" ref={scrollContainerRef}>
                         {Object.entries(groupedLogs).map(([dateGroup, logs]) => {
                             const groupLogs = logs.filter(log =>
                                 filteredLogs.some(fl => fl.id === log.id)
@@ -294,7 +297,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                                         : "border-transparent"
                                                 )}
                                             >
-                                                <div className="flex items-center gap-2 pr-4 relative">
+                                                <div className="flex items-center gap-2 pr-5 relative">
                                                     <span className={cn(
                                                         "px-2 py-0.5 text-[10px] font-medium rounded border",
                                                         getStatusColor(log.statusCode)
@@ -311,7 +314,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                                         {formatTime(log.timestamp)}
                                                     </span>
                                                     {log.isBypass && (
-                                                        <div className="w-2 h-2 absolute right-0 top-1/2 -translate-y-1/2 rounded-full bg-yellow-500 flex-shrink-0" title="Bypass request" />
+                                                        <SplitIcon className="w-3.5 h-3.5 absolute right-0 rotate-90 top-1/2 -translate-y-1/2 text-zinc-700 flex-shrink-0" />
                                                     )}
                                                 </div>
                                             </button>
@@ -332,7 +335,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
                 {/* Right Panel - Log Details */}
                 <ResizablePanel defaultSize={60} minSize={30}>
-                    <div className="h-full overflow-y-auto bg-zinc-900/30">
+                    <div className="h-full overflow-y-auto bg-zinc-900/30 custom-scrollbar">
                         <div className="px-4 py-2 bg-zinc-900/50 border-b border-zinc-800 sticky top-0 flex gap-2 items-center justify-between">
                             <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                                 Log Details
@@ -344,7 +347,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
                             <div className="p-6 space-y-6">
                                 {/* Header */}
-                                <p className="text-lg font-bold text-white">
+                                <p className="text-lg font-bold text-white break-words overflow-wrap-anywhere">
                                     {selectedLog.method} {selectedLog.path}
                                 </p>
 
@@ -391,8 +394,8 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
                                     {selectedLog.targetUrl && (
                                         <div className="flex items-center gap-3">
-                                            <span className="text-xs text-zinc-500 w-32">Target URL:</span>
-                                            <span className="text-xs text-zinc-300 font-mono break-all">
+                                            <span className="text-xs text-zinc-500 w-32 min-w-32 whitespace-nowrap inline-block">Target URL:</span>
+                                            <span className="text-xs text-zinc-300 font-mono break-all inline-block">
                                                 {selectedLog.targetUrl}
                                             </span>
                                         </div>
@@ -411,17 +414,17 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
                                     {selectedLog.userAgent && (
                                         <div className="flex items-center gap-3">
-                                            <span className="text-xs text-zinc-500 w-32">User Agent:</span>
-                                            <span className="text-xs text-zinc-300 font-mono">
+                                            <span className="text-xs text-zinc-500 w-32 min-w-32 whitespace-nowrap inline-block">User Agent:</span>
+                                            <span className="text-xs text-zinc-300 font-mono break-all inline-block">
                                                 {selectedLog.userAgent}
-                                            </span>
+                                            </span> 
                                         </div>
                                     )}
 
                                     {selectedLog.apiKey && (
                                         <div className="flex items-center gap-3">
-                                            <span className="text-xs text-zinc-500 w-32">API Key:</span>
-                                            <span className="text-xs text-zinc-300 font-mono">
+                                            <span className="text-xs text-zinc-500 w-32 min-w-32 whitespace-nowrap inline-block">API Key:</span>
+                                            <span className="text-xs text-zinc-300 font-mono break-all inline-block">
                                                 {selectedLog.apiKey}
                                             </span>
                                         </div>
@@ -460,16 +463,27 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                             </button>
                                         </div>
                                         <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
-                                            <pre className="text-xs text-zinc-300 font-mono whitespace-pre-wrap">
-                                                {(() => {
-                                                    try {
-                                                        const parsed = JSON.parse(selectedLog.responseBody)
-                                                        return JSON.stringify(parsed, null, 2)
-                                                    } catch {
-                                                        return selectedLog.responseBody
-                                                    }
-                                                })()}
-                                            </pre>
+                                            <pre 
+                                                className="text-xs font-mono whitespace-pre-wrap language-json"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: (() => {
+                                                        try {
+                                                            const parsed = JSON.parse(selectedLog.responseBody)
+                                                            const formatted = JSON.stringify(parsed, null, 2)
+                                                            return highlight(formatted, languages.json, 'json')
+                                                        } catch {
+                                                            // If not JSON, return as plain text (escape HTML)
+                                                            const escaped = selectedLog.responseBody
+                                                                .replace(/&/g, '&amp;')
+                                                                .replace(/</g, '&lt;')
+                                                                .replace(/>/g, '&gt;')
+                                                                .replace(/"/g, '&quot;')
+                                                                .replace(/'/g, '&#039;')
+                                                            return escaped
+                                                        }
+                                                    })()
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                 )}
@@ -490,16 +504,27 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                             </button>
                                         </div>
                                         <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
-                                            <pre className="text-xs text-zinc-300 font-mono whitespace-pre-wrap">
-                                                {(() => {
-                                                    try {
-                                                        const parsed = JSON.parse(selectedLog.requestBody)
-                                                        return JSON.stringify(parsed, null, 2)
-                                                    } catch {
-                                                        return selectedLog.requestBody
-                                                    }
-                                                })()}
-                                            </pre>
+                                            <pre 
+                                                className="text-xs font-mono whitespace-pre-wrap language-json"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: (() => {
+                                                        try {
+                                                            const parsed = JSON.parse(selectedLog.requestBody)
+                                                            const formatted = JSON.stringify(parsed, null, 2)
+                                                            return highlight(formatted, languages.json, 'json')
+                                                        } catch {
+                                                            // If not JSON, return as plain text (escape HTML)
+                                                            const escaped = selectedLog.requestBody
+                                                                .replace(/&/g, '&amp;')
+                                                                .replace(/</g, '&lt;')
+                                                                .replace(/>/g, '&gt;')
+                                                                .replace(/"/g, '&quot;')
+                                                                .replace(/'/g, '&#039;')
+                                                            return escaped
+                                                        }
+                                                    })()
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                 )}
