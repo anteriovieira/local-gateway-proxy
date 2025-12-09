@@ -1,8 +1,5 @@
 import React, { useState } from 'react'
-import { X, Settings, Code, Variable, Pencil, Link2 } from 'lucide-react'
-import Editor from 'react-simple-code-editor'
-import { highlight, languages } from 'prismjs'
-import 'prismjs/components/prism-json'
+import { X, Settings, Pencil, Link2 } from 'lucide-react'
 import { Workspace } from '../../types'
 import { cn } from '../../utils'
 
@@ -13,7 +10,7 @@ interface SettingsModalProps {
     onUpdate: (updates: Partial<Workspace>) => void
 }
 
-type TabType = 'general' | 'integration' | 'config' | 'variables'
+type TabType = 'general' | 'integration'
 
 interface TabItem {
     id: TabType
@@ -24,8 +21,6 @@ interface TabItem {
 const tabs: TabItem[] = [
     { id: 'general', label: 'General', icon: <Settings className="w-4 h-4" /> },
     { id: 'integration', label: 'Integration', icon: <Link2 className="w-4 h-4" /> },
-    { id: 'config', label: 'Configuration', icon: <Code className="w-4 h-4" /> },
-    { id: 'variables', label: 'Variables', icon: <Variable className="w-4 h-4" /> },
 ]
 
 
@@ -46,7 +41,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ workspace, isOpen,
             >
                 {/* Left Sidebar Navigation */}
                 <div className="w-56 border-r border-zinc-800 bg-zinc-950/50 flex flex-col">
-                    <div className="p-4 border-b border-zinc-800">
+                    <div className="px-6 py-2.5 border-b border-zinc-800">
                         <h2 className="text-lg font-semibold text-white">Settings</h2>
                     </div>
                     <div className="flex-1 py-2">
@@ -75,7 +70,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ workspace, isOpen,
                 {/* Right Content Area */}
                 <div className="flex-1 flex flex-col min-h-0">
                     {/* Header */}
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+                    <div className="flex items-center justify-between px-6 py-2 border-b border-zinc-800">
                         <h3 className="text-xl font-semibold text-white">
                             {tabs.find(t => t.id === activeTab)?.label}
                         </h3>
@@ -234,71 +229,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ workspace, isOpen,
                                             />
                                         </div>
                                     </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'config' && (
-                                <div className="h-full">
-                                    <div className="mb-3">
-                                        <div className="text-sm font-medium text-zinc-300">Gateway API JSON</div>
-                                    </div>
-                                    <div className="border border-zinc-800 rounded-lg overflow-hidden focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500/20">
-                                        <Editor
-                                            value={workspace.configContent}
-                                            onValueChange={(code) => onUpdate({ configContent: code })}
-                                            highlight={(code) => highlight(code, languages.json, 'json')}
-                                            padding={16}
-                                            style={{
-                                                fontFamily: '"Fira Code", "Fira Mono", "Consolas", "Monaco", monospace',
-                                                fontSize: 13,
-                                                backgroundColor: '#09090b',
-                                                color: '#fafafa',
-                                                minHeight: 'calc(600px - 180px)',
-                                                outline: 'none',
-                                            }}
-                                            textareaClassName="outline-none"
-                                            className="min-h-[calc(600px-180px)] overflow-auto"
-                                            placeholder="Paste your gateway API configuration JSON here..."
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {activeTab === 'variables' && (
-                                <div>
-                                    {Object.keys(workspace.variables).length === 0 ? (
-                                        <div className="text-center py-12 text-zinc-500 text-sm">
-                                            No variables configured
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-0">
-                                            {Object.entries(workspace.variables).map(([key, value], index) => (
-                                                <div 
-                                                    key={key}
-                                                    className={cn(
-                                                        "flex items-center justify-between py-3",
-                                                        index < Object.keys(workspace.variables).length - 1 && "border-b border-zinc-800/50"
-                                                    )}
-                                                >
-                                                    <div className="flex-1">
-                                                        <div className="text-sm font-medium text-zinc-300 font-mono">{key}</div>
-                                                    </div>
-                                                    <div className="flex-1 flex justify-end">
-                                                        <input
-                                                            type="text"
-                                                            value={value}
-                                                            onChange={(e) => {
-                                                                const newVars = { ...workspace.variables, [key]: e.target.value }
-                                                                onUpdate({ variables: newVars })
-                                                            }}
-                                                            className="px-3 py-1.5 bg-zinc-950 border border-zinc-700 rounded-md text-sm text-white font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 w-full max-w-xs"
-                                                            placeholder="Enter value..."
-                                                        />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             )}
                         </div>
