@@ -2,7 +2,7 @@
 
 A desktop application built with Electron for managing and running API Gateway proxy servers locally. Create multiple workspaces, configure endpoints, map variables, and control proxy servers with an intuitive interface.
 
-<img width="1552" height="926" alt="image" src="https://github.com/user-attachments/assets/a1cb92d6-22bd-417c-95b0-bfd8f54d5c03" />
+<img width="1552" height="926" alt="image" src="https://github.com/user-attachments/assets/f49388df-b233-4afb-9da6-b88fab151827" />
 
 ## Features
 
