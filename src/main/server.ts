@@ -55,18 +55,73 @@ export class ServerManager {
             // Helper to replace variables
             const resolveUrl = (template: string, params: Record<string, string>) => {
                 let url = template
-                // Replace stageVariables
-                // Variables are stored with just the name (e.g., "userId")
-                // But the template uses ${stageVariables.userId}
+                const missingVariables: string[] = []
+                
+                // Replace variables
+                // Variables are stored with the name as it appears in the template
+                // (e.g., "userId" or "stageVariables.userId")
                 for (const [key, val] of Object.entries(variables)) {
-                    // key is just the variable name (e.g., "userId")
-                    // Replace ${stageVariables.key} with the value
-                    url = url.replace('${stageVariables.' + key + '}', val || '')
+                    // key is the variable name as it appears in the template
+                    // Replace ${key} with the value
+                    const placeholder = '${' + key + '}'
+                    if (url.includes(placeholder)) {
+                        if (!val || val.trim() === '') {
+                            missingVariables.push(key)
+                        } else {
+                            let normalizedVal = val.trim()
+                            
+                            // If the template already has a protocol (http:// or https://) before the variable,
+                            // and the variable value also includes a protocol, strip it from the value
+                            const placeholderIndex = url.indexOf(placeholder)
+                            const beforePlaceholder = url.substring(0, placeholderIndex)
+                            
+                            // Check if template has protocol before the variable
+                            const hasProtocolInTemplate = /https?:\/\/$/.test(beforePlaceholder)
+                            
+                            // Check if variable value has protocol
+                            if (hasProtocolInTemplate && /^https?:\/\//.test(normalizedVal)) {
+                                // Remove protocol from variable value
+                                normalizedVal = normalizedVal.replace(/^https?:\/\//, '')
+                            }
+                            
+                            // Escape special regex characters in key for safe replacement
+                            const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                            url = url.replace(new RegExp('\\$\\{' + escapedKey + '\\}', 'g'), normalizedVal)
+                        }
+                    }
                 }
+                
+                // Check for any unresolved variables
+                const unresolvedVarRegex = /\$\{([a-zA-Z0-9_.]+)\}/g
+                let match
+                while ((match = unresolvedVarRegex.exec(url)) !== null) {
+                    const varName = match[1]
+                    if (!missingVariables.includes(varName)) {
+                        missingVariables.push(varName)
+                    }
+                }
+                
                 // Replace path params
                 for (const [key, val] of Object.entries(params)) {
                     url = url.replace('{' + key + '}', val || '')
                 }
+                
+                // Check for any unresolved path params
+                const unresolvedPathRegex = /\{([a-zA-Z0-9_]+)\}/g
+                while ((match = unresolvedPathRegex.exec(url)) !== null) {
+                    const paramName = match[1]
+                    // Path params might be optional, so we don't error on them
+                    // But we should log a warning if they're missing
+                }
+                
+                // Throw error if required variables are missing
+                if (missingVariables.length > 0) {
+                    throw new Error(
+                        `Missing or empty required variables: ${missingVariables.join(', ')}. ` +
+                        `Please set these variables in the Variables tab.`
+                    )
+                }
+                
                 return url
             }
 
@@ -103,6 +158,7 @@ export class ServerManager {
                 if ((app as any)[method]) {
                     (app as any)[method](expressPath, (req: Request, res: Response) => {
                         try {
+                            const startTime = Date.now()
                             const targetUrl = resolveUrl(ep.uriTemplate, req.params as Record<string, string>)
 
                             // Send log to renderer
@@ -116,6 +172,65 @@ export class ServerManager {
 
                             // Rewrite req.url for the proxy
                             req.url = targetPath
+
+                            // Add response logging
+                            const originalWrite = res.write.bind(res)
+                            const originalEnd = res.end.bind(res)
+                            let responseBody = ''
+                            let statusCode = res.statusCode || 200
+
+                            // Intercept response data
+                            res.write = function(chunk: any, encoding?: any) {
+                                if (chunk) {
+                                    responseBody += chunk.toString()
+                                }
+                                return originalWrite(chunk, encoding)
+                            }
+
+                            res.end = function(chunk?: any, encoding?: any) {
+                                if (chunk) {
+                                    responseBody += chunk.toString()
+                                }
+                                statusCode = res.statusCode || statusCode
+                                
+                                // Calculate request duration
+                                const duration = Date.now() - startTime
+                                const durationStr = duration < 1000 ? `${duration}ms` : `${(duration / 1000).toFixed(2)}s`
+                                
+                                // Log response
+                                const statusEmoji = statusCode >= 200 && statusCode < 300 ? '✓' : statusCode >= 400 ? '✗' : '→'
+                                const logType = statusCode >= 200 && statusCode < 300 ? 'success' : statusCode >= 400 ? 'error' : 'info'
+                                const responsePreview = responseBody.length > 200 
+                                    ? responseBody.substring(0, 200) + '...' 
+                                    : responseBody
+                                
+                                sendLog(
+                                    workspaceId, 
+                                    `${statusEmoji} ${req.method} ${req.path} <- ${statusCode} ${res.statusMessage || ''} [${durationStr}]${responseBody ? ` (${responseBody.length} bytes)` : ''}`,
+                                    logType,
+                                    mainWindow
+                                )
+                                
+                                // Log response body for debugging (truncated if too long)
+                                if (responseBody) {
+                                    sendLog(
+                                        workspaceId,
+                                        `Response body: ${responsePreview}`,
+                                        logType,
+                                        mainWindow
+                                    )
+                                }
+                                
+                                return originalEnd(chunk, encoding)
+                            }
+
+                            // Listen to proxy response event
+                            const proxyResHandler = (proxyRes: any) => {
+                                statusCode = proxyRes.statusCode || 200
+                                // Status code will be logged in res.end handler
+                            }
+
+                            proxy.once('proxyRes', proxyResHandler)
 
                             proxy.web(req, res, {
                                 target: targetBase,
@@ -149,6 +264,7 @@ export class ServerManager {
                     // If it doesn't match an enabled endpoint, redirect to bypassUri
                     if (!matchesEnabledEndpoint) {
                         try {
+                            const startTime = Date.now()
                             // Use bypassUri as base URL and append the request path
                             // Example: bypassUri = "https://api.app.com/api", req.path = "/posts" 
                             // Result: "https://api.app.com/api/posts"
@@ -179,6 +295,64 @@ export class ServerManager {
 
                             // Rewrite req.url for the proxy
                             req.url = targetPath
+
+                            // Add response logging for bypass
+                            const originalWrite = res.write.bind(res)
+                            const originalEnd = res.end.bind(res)
+                            let responseBody = ''
+                            let statusCode = res.statusCode || 200
+
+                            // Intercept response data
+                            res.write = function(chunk: any, encoding?: any) {
+                                if (chunk) {
+                                    responseBody += chunk.toString()
+                                }
+                                return originalWrite(chunk, encoding)
+                            }
+
+                            res.end = function(chunk?: any, encoding?: any) {
+                                if (chunk) {
+                                    responseBody += chunk.toString()
+                                }
+                                statusCode = res.statusCode || statusCode
+                                
+                                // Calculate request duration
+                                const duration = Date.now() - startTime
+                                const durationStr = duration < 1000 ? `${duration}ms` : `${(duration / 1000).toFixed(2)}s`
+                                
+                                // Log response
+                                const statusEmoji = statusCode >= 200 && statusCode < 300 ? '✓' : statusCode >= 400 ? '✗' : '→'
+                                const logType = statusCode >= 200 && statusCode < 300 ? 'success' : statusCode >= 400 ? 'error' : 'info'
+                                const responsePreview = responseBody.length > 200 
+                                    ? responseBody.substring(0, 200) + '...' 
+                                    : responseBody
+                                
+                                sendLog(
+                                    workspaceId, 
+                                    `${statusEmoji} ${req.method} ${req.path} <- ${statusCode} ${res.statusMessage || ''} [${durationStr}] [BYPASS]${responseBody ? ` (${responseBody.length} bytes)` : ''}`,
+                                    logType,
+                                    mainWindow
+                                )
+                                
+                                // Log response body for debugging (truncated if too long)
+                                if (responseBody) {
+                                    sendLog(
+                                        workspaceId,
+                                        `Response body: ${responsePreview}`,
+                                        logType,
+                                        mainWindow
+                                    )
+                                }
+                                
+                                return originalEnd(chunk, encoding)
+                            }
+
+                            // Listen to proxy response event
+                            const proxyResHandler = (proxyRes: any) => {
+                                statusCode = proxyRes.statusCode || 200
+                            }
+
+                            proxy.once('proxyRes', proxyResHandler)
 
                             proxy.web(req, res, {
                                 target: targetBase,

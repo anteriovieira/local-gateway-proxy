@@ -11,7 +11,7 @@ export interface GatewayConfig {
     variables: string[]
 }
 
-const VARIABLE_REGEX = /\$\{stageVariables\.([a-zA-Z0-9_]+)\}/g
+const VARIABLE_REGEX = /\$\{([a-zA-Z0-9_.]+)\}/g
 const DEFAULT_INTEGRATION_PROPERTY = 'x-amazon-apigateway-integration'
 
 export function parseGatewayConfig(
@@ -51,9 +51,9 @@ export function parseGatewayConfig(
                         VARIABLE_REGEX.lastIndex = 0 // Reset regex
                         
                         while ((match = VARIABLE_REGEX.exec(uriTemplate)) !== null) {
-                            // Extract only the variable name, not the "stageVariables." prefix
-                            // The full format ${stageVariables.varName} is kept in the template
-                            const varName = match[1] // Just the variable name (e.g., "userId")
+                            // Extract the full variable name as it appears in the template
+                            // (e.g., "userId" or "stageVariables.userId")
+                            const varName = match[1]
                             vars.push(varName)
                             variableSet.add(varName)
                         }
