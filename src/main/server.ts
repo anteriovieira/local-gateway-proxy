@@ -33,6 +33,36 @@ function sendLog(workspaceId: string, message: string, type: 'info' | 'error' | 
     console.log(`[Workspace ${workspaceId}] ${message}`)
 }
 
+// Helper function to send API logs to renderer
+function sendApiLog(workspaceId: string, apiLog: {
+    method: string
+    path: string
+    statusCode: number
+    statusMessage?: string
+    targetUrl?: string
+    duration?: number
+    requestId?: string
+    ipAddress?: string
+    userAgent?: string
+    apiKey?: string
+    idempotencyKey?: string
+    responseBody?: string
+    requestBody?: string
+    isBypass?: boolean
+    error?: string
+}, mainWindow: BrowserWindow | null) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('api-log', {
+            workspaceId,
+            apiLog: {
+                id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                timestamp: new Date().toISOString(),
+                ...apiLog
+            }
+        })
+    }
+}
+
 export class ServerManager {
     private servers: Map<string, Server> = new Map()
 
@@ -161,6 +191,20 @@ export class ServerManager {
                             const startTime = Date.now()
                             const targetUrl = resolveUrl(ep.uriTemplate, req.params as Record<string, string>)
 
+                            // Capture request details
+                            const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
+                            const userAgent = req.get('user-agent') || 'unknown'
+                            const apiKey = req.get('authorization')?.replace(/^Bearer /, '') || req.get('x-api-key') || undefined
+                            const idempotencyKey = req.get('idempotency-key') || req.get('x-idempotency-key') || undefined
+                            let requestBody = ''
+                            
+                            // Capture request body if present
+                            if (req.body && typeof req.body === 'object') {
+                                requestBody = JSON.stringify(req.body)
+                            } else if (typeof req.body === 'string') {
+                                requestBody = req.body
+                            }
+
                             // Send log to renderer
                             sendLog(workspaceId, `${req.method} ${req.path} -> ${targetUrl}`, 'info', mainWindow)
 
@@ -211,6 +255,23 @@ export class ServerManager {
                                     mainWindow
                                 )
                                 
+                                // Send structured API log
+                                sendApiLog(workspaceId, {
+                                    method: req.method,
+                                    path: req.path,
+                                    statusCode,
+                                    statusMessage: res.statusMessage,
+                                    targetUrl,
+                                    duration,
+                                    ipAddress,
+                                    userAgent,
+                                    apiKey: apiKey ? (apiKey.length > 20 ? apiKey.substring(0, 20) + '...' : apiKey) : undefined,
+                                    idempotencyKey,
+                                    responseBody: responseBody || undefined,
+                                    requestBody: requestBody || undefined,
+                                    isBypass: false
+                                }, mainWindow)
+                                
                                 // Log response body for debugging (truncated if too long)
                                 if (responseBody) {
                                     sendLog(
@@ -242,6 +303,19 @@ export class ServerManager {
                             const errorMsg = `Handler error: ${err.message}`
                             sendLog(workspaceId, errorMsg, 'error', mainWindow)
                             console.error(`[Workspace ${workspaceId}] ${errorMsg}`, err)
+                            
+                            // Send API log for error
+                            const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
+                            sendApiLog(workspaceId, {
+                                method: req.method,
+                                path: req.path,
+                                statusCode: 500,
+                                statusMessage: 'Internal Server Error',
+                                error: err.message,
+                                ipAddress,
+                                isBypass: false
+                            }, mainWindow)
+                            
                             res.status(500).json({ error: err.message })
                         }
                     })
@@ -284,6 +358,20 @@ export class ServerManager {
                             // Build target URL: baseUrl + requestPath + query string
                             const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''
                             const targetUrl = baseUrl + requestPath + queryString
+
+                            // Capture request details
+                            const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
+                            const userAgent = req.get('user-agent') || 'unknown'
+                            const apiKey = req.get('authorization')?.replace(/^Bearer /, '') || req.get('x-api-key') || undefined
+                            const idempotencyKey = req.get('idempotency-key') || req.get('x-idempotency-key') || undefined
+                            let requestBody = ''
+                            
+                            // Capture request body if present
+                            if (req.body && typeof req.body === 'object') {
+                                requestBody = JSON.stringify(req.body)
+                            } else if (typeof req.body === 'string') {
+                                requestBody = req.body
+                            }
 
                             // Send log to renderer
                             sendLog(workspaceId, `${req.method} ${req.path} -> ${targetUrl} [BYPASS]`, 'info', mainWindow)
@@ -334,6 +422,23 @@ export class ServerManager {
                                     mainWindow
                                 )
                                 
+                                // Send structured API log
+                                sendApiLog(workspaceId, {
+                                    method: req.method,
+                                    path: req.path,
+                                    statusCode,
+                                    statusMessage: res.statusMessage,
+                                    targetUrl,
+                                    duration,
+                                    ipAddress,
+                                    userAgent,
+                                    apiKey: apiKey ? (apiKey.length > 20 ? apiKey.substring(0, 20) + '...' : apiKey) : undefined,
+                                    idempotencyKey,
+                                    responseBody: responseBody || undefined,
+                                    requestBody: requestBody || undefined,
+                                    isBypass: true
+                                }, mainWindow)
+                                
                                 // Log response body for debugging (truncated if too long)
                                 if (responseBody) {
                                     sendLog(
@@ -363,6 +468,19 @@ export class ServerManager {
                             const errorMsg = `Bypass error: ${err.message}`
                             sendLog(workspaceId, errorMsg, 'error', mainWindow)
                             console.error(`[Workspace ${workspaceId}] ${errorMsg}`, err)
+                            
+                            // Send API log for error
+                            const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
+                            sendApiLog(workspaceId, {
+                                method: req.method,
+                                path: req.path,
+                                statusCode: 500,
+                                statusMessage: 'Internal Server Error',
+                                error: err.message,
+                                ipAddress,
+                                isBypass: true
+                            }, mainWindow)
+                            
                             res.status(500).json({ error: err.message })
                         }
                     } else {

@@ -27,6 +27,7 @@ function loadWorkspacesFromStorage(): Workspace[] {
                 ...ws,
                 isRunning: false,
                 logs: [],
+                apiLogs: ws.apiLogs || [],
                 integrationProperty: ws.integrationProperty || 'x-amazon-apigateway-integration',
                 bypassEnabled: ws.bypassEnabled !== undefined ? ws.bypassEnabled : true, // Default to true
                 bypassUri: ws.bypassUri || ''
@@ -41,7 +42,7 @@ function loadWorkspacesFromStorage(): Workspace[] {
 function saveWorkspacesToStorage(workspaces: Workspace[]): void {
     try {
         // Don't save logs to storage (they can be large)
-        const toSave = workspaces.map(ws => ({ ...ws, logs: [] }))
+        const toSave = workspaces.map(ws => ({ ...ws, logs: [], apiLogs: [] }))
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave))
     } catch (e) {
         console.error('Failed to save workspaces to localStorage:', e)
@@ -101,10 +102,22 @@ function App() {
             }))
         }
 
-        const unsubscribe = ipc.on('server-log', handleServerLog)
+        const handleApiLog = (data: { workspaceId: string; apiLog: any }) => {
+            setWorkspaces(prev => prev.map(ws => {
+                if (ws.id !== data.workspaceId) return ws
+                return {
+                    ...ws,
+                    apiLogs: [...(ws.apiLogs || []), data.apiLog]
+                }
+            }))
+        }
+
+        const unsubscribeLog = ipc.on('server-log', handleServerLog)
+        const unsubscribeApiLog = ipc.on('api-log', handleApiLog)
 
         return () => {
-            if (unsubscribe) unsubscribe()
+            if (unsubscribeLog) unsubscribeLog()
+            if (unsubscribeApiLog) unsubscribeApiLog()
         }
     }, [])
 
@@ -119,6 +132,7 @@ function App() {
             variables: {},
             isRunning: false,
             logs: [],
+            apiLogs: [],
             integrationProperty: 'x-amazon-apigateway-integration',
             bypassEnabled: true // Default to enabled
         }
@@ -290,7 +304,8 @@ function App() {
             id: generateId(),
             name: `${ws.name} (Copy)`,
             isRunning: false,
-            logs: []
+            logs: [],
+            apiLogs: []
         }
 
         setWorkspaces(prev => [...prev, duplicated])
@@ -325,7 +340,7 @@ function App() {
     const clearLogs = (workspaceId: string) => {
         setWorkspaces(prev => prev.map(ws => {
             if (ws.id !== workspaceId) return ws
-            return { ...ws, logs: [] }
+            return { ...ws, logs: [], apiLogs: [] }
         }))
     }
 

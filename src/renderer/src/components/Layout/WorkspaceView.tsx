@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react'
 import { Workspace } from '../../types'
 import { EndpointList } from '../Switchboard/EndpointList'
-import { Terminal } from '../Switchboard/Terminal'
+import { EnhancedLogPanel } from '../Switchboard/EnhancedLogPanel'
+import { TerminalLogModal } from '../Switchboard/TerminalLogModal'
 import { Upload, ChevronDown, ChevronRight, CheckSquare, Trash2 } from 'lucide-react'
 import { cn } from '../../utils'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui/resizable'
@@ -20,6 +21,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [isConfigExpanded, setIsConfigExpanded] = useState(true)
     const [isVariablesExpanded, setIsVariablesExpanded] = useState(true)
+    const [isTerminalLogOpen, setIsTerminalLogOpen] = useState(false)
 
     const allEndpointsEnabled = workspace.endpoints.length > 0 && workspace.endpoints.every(ep => ep.enabled !== false)
 
@@ -163,28 +165,22 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
 
                 <ResizableHandle withHandle />
 
-                {/* Panel 3: Terminal */}
+                {/* Panel 3: Enhanced Log Panel */}
                 <ResizablePanel defaultSize={30} minSize={15}>
-                    <div className="h-full flex flex-col bg-black">
-                        <div className="p-3 border-b border-zinc-900 bg-zinc-900/30 text-xs font-medium text-zinc-400 uppercase tracking-wider flex items-center justify-between">
-                            <span>Live Logs</span>
-                            {workspace.logs.length > 0 && (
-                                <button
-                                    onClick={onClearLogs}
-                                    className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded transition-colors"
-                                    title="Clear logs"
-                                >
-                                    <Trash2 className="w-3 h-3" />
-                                    <span>Clear</span>
-                                </button>
-                            )}
-                        </div>
-                        <div className="flex-1 overflow-hidden p-4">
-                            <Terminal logs={workspace.logs} />
-                        </div>
-                    </div>
+                    <EnhancedLogPanel
+                        apiLogs={workspace.apiLogs || []}
+                        onClearLogs={onClearLogs}
+                        onOpenTerminalLog={() => setIsTerminalLogOpen(true)}
+                    />
                 </ResizablePanel>
             </ResizablePanelGroup>
+
+            {/* Terminal Log Modal */}
+            <TerminalLogModal
+                isOpen={isTerminalLogOpen}
+                onClose={() => setIsTerminalLogOpen(false)}
+                logs={workspace.logs}
+            />
         </div>
     )
 }
