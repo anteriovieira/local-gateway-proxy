@@ -29,7 +29,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
             <ResizablePanelGroup direction="horizontal" className="flex-1">
 
                 {/* Panel 1: Switchboard */}
-                <ResizablePanel defaultSize={55} minSize={25}>
+                <ResizablePanel defaultSize={30} minSize={25}>
                     <div className="h-full flex flex-col border-r border-zinc-900 bg-zinc-900/20">
                         <div className="p-3 border-b border-zinc-900 bg-zinc-900/30 text-xs font-medium text-zinc-400 uppercase tracking-wider flex justify-between items-center">
                             <span>Endpoints</span>
@@ -72,7 +72,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
                 <ResizableHandle withHandle />
 
                 {/* Panel 2: Enhanced Log Panel */}
-                <ResizablePanel defaultSize={45} minSize={15}>
+                <ResizablePanel defaultSize={70} minSize={15}>
                     <EnhancedLogPanel
                         apiLogs={workspace.apiLogs || []}
                         onClearLogs={onClearLogs}

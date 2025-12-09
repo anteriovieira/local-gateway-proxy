@@ -3,7 +3,7 @@ import { ApiLogEntry } from '../../types'
 import { 
     Search, X, Copy, 
     RefreshCw, Trash2, Terminal,
-    ListRestart,  
+    ListRestart, ArrowRight
 } from 'lucide-react'
 import { cn } from '../../utils'
 
@@ -302,6 +302,12 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                                 <span className="text-xs font-mono text-zinc-300">
                                                     {log.method}
                                                 </span>
+                                                {log.isBypass && (
+                                                    <span className="px-1.5 py-0.5 text-[9px] font-medium rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 flex items-center gap-0.5" title="Bypass request">
+                                                        <ArrowRight className="w-2.5 h-2.5" />
+                                                        BYPASS
+                                                    </span>
+                                                )}
                                                 <span className="text-xs text-zinc-400 flex-1 truncate">
                                                     {log.path}
                                                 </span>
