@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Plus, Activity, GripVertical, Trash2, Play, Square, MoreVertical, Copy } from 'lucide-react'
+import { Plus, Activity, GripVertical, Trash2, Play, Square, MoreVertical, Copy, FolderKanban } from 'lucide-react'
 import { Workspace } from '../../types'
 import { cn } from '../../utils'
 
@@ -113,19 +113,48 @@ export const Home: React.FC<HomeProps> = ({ workspaces, activeWorkspaceId, onSel
     return (
         <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden">
             {/* Header */}
-            <div className="p-8 border-b border-zinc-900">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white mb-2">Your workspaces</h1>
-                        <p className="text-zinc-400">A directory of your workspaces.</p>
+            <div className="relative border-b border-zinc-900/50 bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-950/95">
+                {/* Subtle background pattern */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#27272a_1px,transparent_1px),linear-gradient(to_bottom,#27272a_1px,transparent_1px)] bg-[size:24px_24px] opacity-20"></div>
+                
+                <div className="relative px-8 py-10">
+                    <div className="flex items-start justify-between gap-6">
+                        <div className="flex items-start gap-4">
+                            {/* Title and description */}
+                            <div>
+                                <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">
+                                    Workspaces
+                                </h1>
+                                <p className="text-sm text-zinc-500 font-medium">
+                                    Manage your proxy server configurations
+                                </p>
+                                {workspaces.length > 0 && (
+                                    <div className="mt-3 flex items-center gap-4 text-xs text-zinc-600">
+                                        <span className="flex items-center gap-1.5">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-zinc-600"></div>
+                                            {workspaces.length} {workspaces.length === 1 ? 'workspace' : 'workspaces'}
+                                        </span>
+                                        <span className="flex items-center gap-1.5">
+                                            <Activity className={cn(
+                                                "w-3.5 h-3.5",
+                                                workspaces.some(w => w.isRunning) ? "text-emerald-500 animate-pulse" : "text-zinc-600"
+                                            )} />
+                                            {workspaces.filter(w => w.isRunning).length} running
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* Create Workspace Button */}
+                        <button
+                            onClick={onAddWorkspace}
+                            className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-200 hover:text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-sm hover:shadow-md hover:shadow-black/20 group"
+                        >
+                            <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-200" />
+                            <span>Create Workspace</span>
+                        </button>
                     </div>
-                    <button
-                        onClick={onAddWorkspace}
-                        className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md text-sm font-medium transition-colors flex items-center gap-1.5"
-                    >
-                        <Plus className="w-3.5 h-3.5" />
-                        Create Workspace
-                    </button>
                 </div>
             </div>
 
