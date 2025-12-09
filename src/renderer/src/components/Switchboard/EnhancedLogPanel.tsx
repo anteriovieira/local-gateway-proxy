@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { ApiLogEntry } from '../../types'
-import { 
-    Search, X, Copy, 
+import {
+    Search, X, Copy,
     RefreshCw, Trash2, Terminal,
-    ListRestart, ArrowRight
+    ListRestart
 } from 'lucide-react'
 import { cn } from '../../utils'
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui/resizable'
 
 interface EnhancedLogPanelProps {
     apiLogs: ApiLogEntry[]
@@ -20,10 +21,10 @@ type FilterType = {
     date?: string
 }
 
-export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({ 
-    apiLogs, 
+export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
+    apiLogs,
     onClearLogs,
-    onOpenTerminalLog 
+    onOpenTerminalLog
 }) => {
     const [selectedLog, setSelectedLog] = useState<ApiLogEntry | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
@@ -47,10 +48,10 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
             } else if (logDate.toDateString() === yesterday.toDateString()) {
                 groupKey = 'Yesterday'
             } else {
-                groupKey = logDate.toLocaleDateString('en-US', { 
-                    day: 'numeric', 
-                    month: 'short', 
-                    year: 'numeric' 
+                groupKey = logDate.toLocaleDateString('en-US', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
                 })
             }
 
@@ -62,7 +63,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
         // Sort logs within each group by timestamp (newest first)
         Object.keys(groups).forEach(key => {
-            groups[key].sort((a, b) => 
+            groups[key].sort((a, b) =>
                 new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
             )
         })
@@ -76,7 +77,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
         // Search filter
         if (searchQuery) {
-            filtered = filtered.filter(log => 
+            filtered = filtered.filter(log =>
                 log.path.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 log.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 log.requestId?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -95,7 +96,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
         // Endpoint filter
         if (filters.endpoint) {
-            filtered = filtered.filter(log => 
+            filtered = filtered.filter(log =>
                 log.path.toLowerCase().includes(filters.endpoint!.toLowerCase())
             )
         }
@@ -104,12 +105,12 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
     }, [apiLogs, searchQuery, filters])
 
     // Get unique methods and status codes for filters
-    const uniqueMethods = useMemo(() => 
-        Array.from(new Set(apiLogs.map(log => log.method))), 
+    const uniqueMethods = useMemo(() =>
+        Array.from(new Set(apiLogs.map(log => log.method))),
         [apiLogs]
     )
-    const uniqueStatusCodes = useMemo(() => 
-        Array.from(new Set(apiLogs.map(log => log.statusCode))).sort((a, b) => a - b), 
+    const uniqueStatusCodes = useMemo(() =>
+        Array.from(new Set(apiLogs.map(log => log.statusCode))).sort((a, b) => a - b),
         [apiLogs]
     )
 
@@ -129,10 +130,10 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
     }
 
     const formatTime = (timestamp: string) => {
-        return new Date(timestamp).toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            second: '2-digit' 
+        return new Date(timestamp).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
         })
     }
 
@@ -180,7 +181,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
         setSearchQuery('')
     }
 
-    const activeFilterCount = Object.values(filters).filter(v => 
+    const activeFilterCount = Object.values(filters).filter(v =>
         Array.isArray(v) ? v.length > 0 : Boolean(v)
     ).length
 
@@ -218,8 +219,8 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                             >
                                 {method}
                                 {isActive && (
-                                    <X 
-                                        className="w-3 h-3" 
+                                    <X
+                                        className="w-3 h-3"
                                         onClick={(e) => {
                                             e.stopPropagation()
                                             toggleMethodFilter(method)
@@ -255,256 +256,262 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
             </div>
 
             {/* Main Content - Two Panels */}
-            <div className="flex-1 flex overflow-hidden">
+            <ResizablePanelGroup direction="horizontal" className="flex-1">
                 {/* Left Panel - Log List */}
-                <div className="w-2/5 border-r border-zinc-800 overflow-y-auto" ref={scrollContainerRef}>
-                    {Object.entries(groupedLogs).map(([dateGroup, logs]) => {
-                        const groupLogs = logs.filter(log => 
-                            filteredLogs.some(fl => fl.id === log.id)
-                        )
-                        if (groupLogs.length === 0) return null
+                <ResizablePanel defaultSize={40} minSize={20}>
+                    <div className="h-full overflow-y-auto border-r border-zinc-800" ref={scrollContainerRef}>
+                        {Object.entries(groupedLogs).map(([dateGroup, logs]) => {
+                            const groupLogs = logs.filter(log =>
+                                filteredLogs.some(fl => fl.id === log.id)
+                            )
+                            if (groupLogs.length === 0) return null
 
-                        return (
-                            <div key={dateGroup} className="mb-4">
-                                <div className="px-4 py-2 bg-zinc-900/50 border-b border-zinc-800 sticky top-0 flex gap-2 items-center justify-between">
-                                    <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                                        {dateGroup}
-                                    </h3>
-                                    {dateGroup === 'Today' && (
-                                        <div className="text-[10px] text-zinc-600 mt-1 flex items-center gap-2">
-                                 
-                                            <button className="text-purple-400 hover:text-purple-300 flex items-center gap-1">
-                                                <RefreshCw className="w-3 h-3" />
-                                                Reload
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="space-y-0.5">
-                                    {groupLogs.map(log => (
-                                        <button
-                                            key={log.id}
-                                            onClick={() => setSelectedLog(log)}
-                                            className={cn(
-                                                "w-full px-4 py-2.5 text-left hover:bg-zinc-900/50 transition-colors border-l-2",
-                                                selectedLog?.id === log.id
-                                                    ? "bg-purple-500/10 border-purple-500"
-                                                    : "border-transparent"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className={cn(
-                                                    "px-2 py-0.5 text-[10px] font-medium rounded border",
-                                                    getStatusColor(log.statusCode)
-                                                )}>
-                                                    {log.statusCode} {log.statusCode >= 200 && log.statusCode < 300 ? 'OK' : ''}
-                                                </span>
-                                                <span className="text-xs font-mono text-zinc-300">
-                                                    {log.method}
-                                                </span>
-                                                {log.isBypass && (
-                                                    <span className="px-1.5 py-0.5 text-[9px] font-medium rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 flex items-center gap-0.5" title="Bypass request">
-                                                        <ArrowRight className="w-2.5 h-2.5" />
-                                                        BYPASS
-                                                    </span>
-                                                )}
-                                                <span className="text-xs text-zinc-400 flex-1 truncate">
-                                                    {log.path}
-                                                </span>
-                                                <span className="text-[10px] text-zinc-600">
-                                                    {formatTime(log.timestamp)}
-                                                </span>
+                            return (
+                                <div key={dateGroup} className="mb-4">
+                                    <div className="px-4 py-2 bg-zinc-900/50 border-b border-zinc-800 sticky top-0 flex gap-2 items-center justify-between">
+                                        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                                            {dateGroup}
+                                        </h3>
+                                        {dateGroup === 'Today' && (
+                                            <div className="text-[10px] text-zinc-600 mt-1 flex items-center gap-2">
+
+                                                <button className="text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                                                    <RefreshCw className="w-3 h-3" />
+                                                    Reload
+                                                </button>
                                             </div>
-                                        </button>
-                                    ))}
+                                        )}
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        {groupLogs.map(log => (
+                                            <button
+                                                key={log.id}
+                                                onClick={() => setSelectedLog(log)}
+                                                className={cn(
+                                                    "w-full px-4 py-2.5 text-left hover:bg-zinc-900/50 transition-colors border-l-2",
+                                                    selectedLog?.id === log.id
+                                                        ? "bg-purple-500/10 border-purple-500"
+                                                        : "border-transparent"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-2 pr-4 relative">
+                                                    <span className={cn(
+                                                        "px-2 py-0.5 text-[10px] font-medium rounded border",
+                                                        getStatusColor(log.statusCode)
+                                                    )}>
+                                                        {log.statusCode} {log.statusCode >= 200 && log.statusCode < 300 ? 'OK' : ''}
+                                                    </span>
+                                                    <span className="text-xs font-mono text-zinc-300">
+                                                        {log.method}
+                                                    </span>
+                                                    <span className="text-xs text-zinc-400 flex-1 truncate">
+                                                        {log.path}
+                                                    </span>
+                                                    <span className="text-[10px] text-zinc-600">
+                                                        {formatTime(log.timestamp)}
+                                                    </span>
+                                                    {log.isBypass && (
+                                                        <div className="w-2 h-2 absolute right-0 top-1/2 -translate-y-1/2 rounded-full bg-yellow-500 flex-shrink-0" title="Bypass request" />
+                                                    )}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
+                            )
+                        })}
+                        {filteredLogs.length === 0 && (
+                            <div className="flex items-center justify-center h-full text-zinc-600 text-sm">
+                                No logs found
                             </div>
-                        )
-                    })}
-                    {filteredLogs.length === 0 && (
-                        <div className="flex items-center justify-center h-full text-zinc-600 text-sm">
-                            No logs found
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                </ResizablePanel>
+
+                <ResizableHandle withHandle />
 
                 {/* Right Panel - Log Details */}
-                <div className="flex-1 overflow-y-auto bg-zinc-900/30">
-                    {selectedLog ? (
-                        <div className="p-6 space-y-6">
-                            {/* Header */}
-                            <div>
-                                <h2 className="text-sm font-semibold text-zinc-300 mb-1">
-                                    API Request
-                                </h2>
+                <ResizablePanel defaultSize={60} minSize={30}>
+                    <div className="h-full overflow-y-auto bg-zinc-900/30">
+                        <div className="px-4 py-2 bg-zinc-900/50 border-b border-zinc-800 sticky top-0 flex gap-2 items-center justify-between">
+                            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                                Log Details
+                            </h3>
+
+                        </div>
+                        {selectedLog ? (
+
+
+                            <div className="p-6 space-y-6">
+                                {/* Header */}
                                 <p className="text-lg font-bold text-white">
                                     {selectedLog.method} {selectedLog.path}
                                 </p>
-                            </div>
 
-                            {/* Request Details */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xs text-zinc-500 w-32">Status:</span>
-                                    <span className={cn(
-                                        "px-2 py-0.5 text-xs font-medium rounded border",
-                                        getStatusColor(selectedLog.statusCode)
-                                    )}>
-                                        {selectedLog.statusCode} {selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? 'OK' : ''}
-                                    </span>
-                                </div>
-
-                                {selectedLog.id && (
+                                {/* Request Details */}
+                                <div className="space-y-3">
                                     <div className="flex items-center gap-3">
-                                        <span className="text-xs text-zinc-500 w-32">Request ID:</span>
-                                        <button
-                                            onClick={() => copyToClipboard(selectedLog.id)}
-                                            className="text-xs text-purple-400 hover:text-purple-300 font-mono flex items-center gap-1"
-                                        >
-                                            {selectedLog.id}
-                                            <Copy className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                )}
-
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xs text-zinc-500 w-32">Time:</span>
-                                    <span className="text-xs text-zinc-300">
-                                        {formatDate(selectedLog.timestamp)}
-                                    </span>
-                                </div>
-
-                                {selectedLog.ipAddress && (
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-zinc-500 w-32">IP Address:</span>
-                                        <span className="text-xs text-zinc-300 font-mono">
-                                            {selectedLog.ipAddress}
+                                        <span className="text-xs text-zinc-500 w-32">Status:</span>
+                                        <span className={cn(
+                                            "px-2 py-0.5 text-xs font-medium rounded border",
+                                            getStatusColor(selectedLog.statusCode)
+                                        )}>
+                                            {selectedLog.statusCode} {selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? 'OK' : ''}
                                         </span>
                                     </div>
-                                )}
 
-                                {selectedLog.targetUrl && (
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-zinc-500 w-32">Target URL:</span>
-                                        <span className="text-xs text-zinc-300 font-mono break-all">
-                                            {selectedLog.targetUrl}
-                                        </span>
-                                    </div>
-                                )}
+                                    {selectedLog.id && (
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-zinc-500 w-32">Request ID:</span>
+                                            <button
+                                                onClick={() => copyToClipboard(selectedLog.id)}
+                                                className="text-xs text-purple-400 hover:text-purple-300 font-mono flex items-center gap-1"
+                                            >
+                                                {selectedLog.id}
+                                                <Copy className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    )}
 
-                                {selectedLog.duration !== undefined && (
                                     <div className="flex items-center gap-3">
-                                        <span className="text-xs text-zinc-500 w-32">Duration:</span>
+                                        <span className="text-xs text-zinc-500 w-32">Time:</span>
                                         <span className="text-xs text-zinc-300">
-                                            {selectedLog.duration < 1000 
-                                                ? `${selectedLog.duration}ms` 
-                                                : `${(selectedLog.duration / 1000).toFixed(2)}s`}
+                                            {formatDate(selectedLog.timestamp)}
                                         </span>
+                                    </div>
+
+                                    {selectedLog.ipAddress && (
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-zinc-500 w-32">IP Address:</span>
+                                            <span className="text-xs text-zinc-300 font-mono">
+                                                {selectedLog.ipAddress}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {selectedLog.targetUrl && (
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-zinc-500 w-32">Target URL:</span>
+                                            <span className="text-xs text-zinc-300 font-mono break-all">
+                                                {selectedLog.targetUrl}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {selectedLog.duration !== undefined && (
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-zinc-500 w-32">Duration:</span>
+                                            <span className="text-xs text-zinc-300">
+                                                {selectedLog.duration < 1000
+                                                    ? `${selectedLog.duration}ms`
+                                                    : `${(selectedLog.duration / 1000).toFixed(2)}s`}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {selectedLog.userAgent && (
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-zinc-500 w-32">User Agent:</span>
+                                            <span className="text-xs text-zinc-300 font-mono">
+                                                {selectedLog.userAgent}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {selectedLog.apiKey && (
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-zinc-500 w-32">API Key:</span>
+                                            <span className="text-xs text-zinc-300 font-mono">
+                                                {selectedLog.apiKey}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {selectedLog.idempotencyKey && (
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-zinc-500 w-32">Idempotency Key:</span>
+                                            <span className="text-xs text-zinc-300 font-mono break-all">
+                                                {selectedLog.idempotencyKey}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {selectedLog.isBypass && (
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-xs text-zinc-500 w-32">Bypass:</span>
+                                            <span className="text-xs text-yellow-400">Yes</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Response Body */}
+                                {selectedLog.responseBody && (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-sm font-semibold text-zinc-300">
+                                                Response Body
+                                            </h3>
+                                            <button
+                                                onClick={() => copyToClipboard(selectedLog.responseBody || '')}
+                                                className="p-1.5 hover:bg-zinc-800 rounded transition-colors"
+                                                title="Copy response body"
+                                            >
+                                                <Copy className="w-4 h-4 text-zinc-400" />
+                                            </button>
+                                        </div>
+                                        <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
+                                            <pre className="text-xs text-zinc-300 font-mono whitespace-pre-wrap">
+                                                {(() => {
+                                                    try {
+                                                        const parsed = JSON.parse(selectedLog.responseBody)
+                                                        return JSON.stringify(parsed, null, 2)
+                                                    } catch {
+                                                        return selectedLog.responseBody
+                                                    }
+                                                })()}
+                                            </pre>
+                                        </div>
                                     </div>
                                 )}
 
-                                {selectedLog.userAgent && (
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-zinc-500 w-32">User Agent:</span>
-                                        <span className="text-xs text-zinc-300 font-mono">
-                                            {selectedLog.userAgent}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {selectedLog.apiKey && (
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-zinc-500 w-32">API Key:</span>
-                                        <span className="text-xs text-zinc-300 font-mono">
-                                            {selectedLog.apiKey}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {selectedLog.idempotencyKey && (
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-zinc-500 w-32">Idempotency Key:</span>
-                                        <span className="text-xs text-zinc-300 font-mono break-all">
-                                            {selectedLog.idempotencyKey}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {selectedLog.isBypass && (
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xs text-zinc-500 w-32">Bypass:</span>
-                                        <span className="text-xs text-yellow-400">Yes</span>
+                                {/* Request Body */}
+                                {selectedLog.requestBody && (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-sm font-semibold text-zinc-300">
+                                                Request Body
+                                            </h3>
+                                            <button
+                                                onClick={() => copyToClipboard(selectedLog.requestBody || '')}
+                                                className="p-1.5 hover:bg-zinc-800 rounded transition-colors"
+                                                title="Copy request body"
+                                            >
+                                                <Copy className="w-4 h-4 text-zinc-400" />
+                                            </button>
+                                        </div>
+                                        <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
+                                            <pre className="text-xs text-zinc-300 font-mono whitespace-pre-wrap">
+                                                {(() => {
+                                                    try {
+                                                        const parsed = JSON.parse(selectedLog.requestBody)
+                                                        return JSON.stringify(parsed, null, 2)
+                                                    } catch {
+                                                        return selectedLog.requestBody
+                                                    }
+                                                })()}
+                                            </pre>
+                                        </div>
                                     </div>
                                 )}
                             </div>
-
-                            {/* Response Body */}
-                            {selectedLog.responseBody && (
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-semibold text-zinc-300">
-                                            Response Body
-                                        </h3>
-                                        <button
-                                            onClick={() => copyToClipboard(selectedLog.responseBody || '')}
-                                            className="p-1.5 hover:bg-zinc-800 rounded transition-colors"
-                                            title="Copy response body"
-                                        >
-                                            <Copy className="w-4 h-4 text-zinc-400" />
-                                        </button>
-                                    </div>
-                                    <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
-                                        <pre className="text-xs text-zinc-300 font-mono whitespace-pre-wrap">
-                                            {(() => {
-                                                try {
-                                                    const parsed = JSON.parse(selectedLog.responseBody)
-                                                    return JSON.stringify(parsed, null, 2)
-                                                } catch {
-                                                    return selectedLog.responseBody
-                                                }
-                                            })()}
-                                        </pre>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Request Body */}
-                            {selectedLog.requestBody && (
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-semibold text-zinc-300">
-                                            Request Body
-                                        </h3>
-                                        <button
-                                            onClick={() => copyToClipboard(selectedLog.requestBody || '')}
-                                            className="p-1.5 hover:bg-zinc-800 rounded transition-colors"
-                                            title="Copy request body"
-                                        >
-                                            <Copy className="w-4 h-4 text-zinc-400" />
-                                        </button>
-                                    </div>
-                                    <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
-                                        <pre className="text-xs text-zinc-300 font-mono whitespace-pre-wrap">
-                                            {(() => {
-                                                try {
-                                                    const parsed = JSON.parse(selectedLog.requestBody)
-                                                    return JSON.stringify(parsed, null, 2)
-                                                } catch {
-                                                    return selectedLog.requestBody
-                                                }
-                                            })()}
-                                        </pre>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-zinc-600 text-sm">
-                            Select a log entry to view details
-                        </div>
-                    )}
-                </div>
-            </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-zinc-600 text-sm">
+                                Select a log entry to view details
+                            </div>
+                        )}
+                    </div>
+                </ResizablePanel>
+            </ResizablePanelGroup>
         </div>
     )
 }

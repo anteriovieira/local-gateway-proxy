@@ -257,6 +257,69 @@ function App() {
         }
     }
 
+    const restartServer = async (id: string) => {
+        const ws = workspaces.find(w => w.id === id)
+        if (!ws) return
+
+        // Only restart if server is running
+        if (!ws.isRunning) {
+            // If not running, just start it
+            await toggleServer(id)
+            return
+        }
+
+        console.log('[DEBUG] Restarting server...', { id, port: ws.port })
+
+        try {
+            // Stop the server
+            await ipc?.invoke('stop-server', { workspaceId: id })
+            updateWorkspace(id, { isRunning: false })
+            addLog(id, 'Server stopped for restart', 'info')
+
+            // Wait for server to fully stop
+            await new Promise(resolve => setTimeout(resolve, 500))
+
+            // Filter enabled endpoints
+            const activeEndpoints = ws.endpoints.filter(e => e.enabled !== false)
+
+            if (activeEndpoints.length === 0) {
+                toast.error('Cannot restart server', {
+                    description: 'No enabled endpoints available'
+                })
+                return
+            }
+
+            // Start the server with updated configuration
+            const result = await ipc?.invoke('start-server', {
+                workspaceId: id,
+                port: ws.port,
+                endpoints: ws.endpoints,
+                variables: ws.variables,
+                bypassEnabled: ws.bypassEnabled !== false,
+                bypassUri: ws.bypassUri || ''
+            })
+
+            if (result?.success) {
+                updateWorkspace(id, { isRunning: true })
+                addLog(id, `Server restarted on port ${ws.port}`, 'success')
+                addLog(id, `Loaded ${activeEndpoints.length} endpoints`, 'info')
+                toast.success(`Server restarted`, {
+                    description: `${ws.name} has been restarted on port ${ws.port} with ${activeEndpoints.length} endpoint${activeEndpoints.length !== 1 ? 's' : ''}`
+                })
+            } else {
+                addLog(id, `Failed to restart: ${result?.error || 'Unknown error'}`, 'error')
+                toast.error('Failed to restart server', {
+                    description: result?.error || 'Unknown error occurred'
+                })
+            }
+        } catch (err: any) {
+            addLog(id, `Restart error: ${err.message}`, 'error')
+            toast.error('Failed to restart server', {
+                description: err.message || 'Unknown error occurred'
+            })
+        }
+    }
+
     const addLog = (id: string, message: string, type: 'info' | 'error' | 'success' = 'info') => {
         setWorkspaces(prev => prev.map(ws => {
             if (ws.id !== id) return ws
@@ -379,6 +442,7 @@ function App() {
                         workspace={activeWorkspace}
                         onUpdate={(u) => updateWorkspace(activeWorkspace.id, u)}
                         onToggleServer={() => toggleServer(activeWorkspace.id)}
+                        onRestartServer={() => restartServer(activeWorkspace.id)}
                         onEndpointToggle={(idx) => toggleEndpoint(activeWorkspace.id, idx)}
                         onToggleAllEndpoints={(enabled) => toggleAllEndpoints(activeWorkspace.id, enabled)}
                         onClearLogs={() => clearLogs(activeWorkspace.id)}

@@ -14,6 +14,7 @@ interface DefinitionsModalProps {
     onUpdate: (updates: Partial<Workspace>) => void
     isRunning?: boolean
     onToggleServer?: () => void
+    onRestartServer?: () => void
 }
 
 export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
@@ -22,7 +23,8 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
     onClose,
     onUpdate,
     isRunning = false,
-    onToggleServer
+    onToggleServer,
+    onRestartServer
 }) => {
     const [isApplying, setIsApplying] = useState(false)
     const [localWorkspace, setLocalWorkspace] = useState<Workspace | null>(workspace)
@@ -45,20 +47,17 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
                 variables: localWorkspace.variables
             })
 
-            // If server is running, restart it
-            if (isRunning && onToggleServer) {
-                // Stop the server first (toggleServer handles async operations)
-                if (onToggleServer) {
-                    await onToggleServer()
-                }
-                // Wait for the server to fully stop and state to update
-                await new Promise(resolve => setTimeout(resolve, 800))
-                // Start it again with the new configuration
-                if (onToggleServer) {
-                    await onToggleServer()
-                }
-                // Wait a bit more to ensure server started
-                await new Promise(resolve => setTimeout(resolve, 500))
+            // If server is running, restart it using the dedicated restart function
+            if (isRunning && onRestartServer) {
+                await onRestartServer()
+            } else if (isRunning && onToggleServer) {
+                // Fallback to toggle if restart is not available
+                // Stop the server first
+                await onToggleServer()
+                // Wait for the server to fully stop
+                await new Promise(resolve => setTimeout(resolve, 1000))
+                // Start it again
+                await onToggleServer()
             }
 
             // Close the modal
