@@ -94,6 +94,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
                 isOpen={isDefinitionsModalOpen}
                 onClose={() => setIsDefinitionsModalOpen(false)}
                 onUpdate={onUpdate}
+                isRunning={workspace.isRunning}
+                onToggleServer={onToggleServer}
             />
         </div>
     )
