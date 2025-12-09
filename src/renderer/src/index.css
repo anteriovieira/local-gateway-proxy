@@ -1,0 +1,214 @@
+@import "tailwindcss";
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #09090b;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #27272a;
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #3f3f46;
+  }
+}
+
+:root {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 5.9% 10%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 240 4.9% 83.9%;
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Prism.js JSON syntax highlighting - Dark theme */
+code[class*="language-"],
+pre[class*="language-"] {
+  color: #fafafa;
+  background: #09090b;
+  text-shadow: none;
+}
+
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #71717a;
+}
+
+.token.punctuation {
+  color: #a1a1aa;
+}
+
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #60a5fa;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #34d399;
+}
+
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+  color: #fbbf24;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #a78bfa;
+}
+
+.token.function,
+.token.class-name {
+  color: #f472b6;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: #fb7185;
+}
+
+/* Sonner Toast Custom Styles - Dark Theme */
+[data-sonner-toast] {
+  background: #18181b !important;
+  border: 1px solid #27272a !important;
+  color: #fafafa !important;
+}
+
+[data-sonner-toast][data-type="success"] {
+  background: #18181b !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: #71717a !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background: #18181b !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: #71717a !important;
+}
+
+[data-sonner-toast][data-type="info"] {
+  background: #18181b !important;
+  border-color: #3f3f46 !important;
+}
+
+[data-sonner-toast][data-type="info"] [data-icon] {
+  color: #71717a !important;
+}
+
+[data-sonner-toast] [data-title] {
+  color: #fafafa !important;
+}
+
+[data-sonner-toast] [data-description] {
+  color: #a1a1aa !important;
+}
+
+/* React Window Virtual List Styles */
+.react-window-list {
+  scrollbar-width: thin;
+  scrollbar-color: #27272a #09090b;
+}
+
+.react-window-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.react-window-list::-webkit-scrollbar-track {
+  background: #09090b;
+}
+
+.react-window-list::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 4px;
+}
+
+.react-window-list::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}

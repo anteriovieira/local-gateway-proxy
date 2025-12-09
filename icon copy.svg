@@ -1,0 +1,13 @@
+<svg width="256" height="256" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hexagon Container -->
+  <path d="M50 4 L91.5 28 V76 L50 100 L8.5 76 V28 L50 4Z" stroke="#6893F3" stroke-width="2" stroke-linejoin="round"/>
+  
+  <!-- Right Rectangle (Light Blue) - Behind -->
+  <path d="M62 24 L82 34 V54 L62 44 Z" fill="#A4C2FA"/>
+  
+  <!-- Left Rectangle (Light Blue) - Behind -->
+  <path d="M22 48 L42 58 V78 L22 68 Z" fill="#A4C2FA"/>
+  
+  <!-- Center Main Rectangle (Royal Blue) - Isometric/Perspective -->
+  <path d="M36 26 L66 41 V84 L36 69 Z" fill="#4B77F2" stroke="white" stroke-width="2"/>
+</svg>

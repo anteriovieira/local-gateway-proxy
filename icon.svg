@@ -1,0 +1,20 @@
+<svg width="256" height="256" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Hexagon Container -->
+  <path d="M50 4 L91.5 28 V76 L50 100 L8.5 76 V28 L50 4Z" stroke="#6893F3" stroke-width="2" stroke-linejoin="round"/>
+  
+  <!-- Right Rectangle (Light Blue) - Behind -->
+  <path d="M62 24 L82 34 V54 L62 44 Z" fill="#A4C2FA"/>
+  
+  <!-- Center Main Rectangle (Royal Blue) - Middle Layer -->
+  <path d="M36 26 L66 41 V84 L36 69 Z" fill="#4B77F2"/>
+
+  <!-- Left Side: 4 Small Squares (Light Blue) - Front Layer (Larger) -->
+  <!-- Top Left -->
+  <path d="M18 46 L30 52 V64 L18 58 Z" fill="#A4C2FA" stroke="white" stroke-width="1"/>
+  <!-- Top Right -->
+  <path d="M32 53 L44 59 V71 L32 65 Z" fill="#A4C2FA" stroke="white" stroke-width="1"/>
+  <!-- Bottom Left -->
+  <path d="M18 60 L30 66 V78 L18 72 Z" fill="#A4C2FA" stroke="white" stroke-width="1"/>
+  <!-- Bottom Right -->
+  <path d="M32 67 L44 73 V85 L32 79 Z" fill="#A4C2FA" stroke="white" stroke-width="1"/>
+</svg>

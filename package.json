@@ -1,0 +1,151 @@
+{
+  "name": "proxy-app",
+  "version": "1.0.0",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "tsc -p tsconfig.node.json && concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "build": "tsc -p tsconfig.node.json && vite build",
+    "build:icons": "node scripts/generate-icons.js",
+    "build:mac": "npm run build:icons && npm run build && electron-builder --mac",
+    "build:win": "npm run build:icons && npm run build && electron-builder --win",
+    "build:linux": "npm run build:icons && npm run build && electron-builder --linux",
+    "build:all": "npm run build:icons && npm run build && electron-builder --mac --win --linux",
+    "dist": "npm run build:icons && npm run build && electron-builder",
+    "start": "electron ."
+  },
+  "keywords": [
+    "proxy",
+    "gateway",
+    "api",
+    "development",
+    "local-server",
+    "api-gateway",
+    "aws",
+    "electron",
+    "desktop-app"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "Local Gateway Proxy - A powerful proxy tool for API development and testing",
+  "build": {
+    "appId": "com.proxyapp.localgateway",
+    "productName": "Local Gateway Proxy",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "build/icons/icon-512x512.png",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icons/icon-256x256.png"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Development",
+      "icon": "build/icons/icon-512x512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/body-parser": "^1.19.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/http-proxy": "^1.17.17",
+    "@types/node": "^24.10.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "autoprefixer": "^10.4.22",
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.6",
+    "electron-builder": "^26.0.12",
+    "postcss": "^8.5.6",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.7",
+    "wait-on": "^9.0.3"
+  },
+  "dependencies": {
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@tanstack/react-virtual": "^3.13.13",
+    "@types/prismjs": "^1.26.5",
+    "body-parser": "^2.2.1",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cors": "^2.8.5",
+    "express": "^5.2.1",
+    "http-proxy-middleware": "^3.0.5",
+    "lucide-react": "^0.556.0",
+    "prismjs": "^1.30.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "react-resizable-panels": "^3.0.6",
+    "react-simple-code-editor": "^0.14.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7"
+  }
+}

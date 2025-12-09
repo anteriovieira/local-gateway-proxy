@@ -1,0 +1,27 @@
+export interface EndpointDef {
+    path: string
+    method: string
+    uriTemplate: string
+    variableNames?: string[]
+    enabled?: boolean // New field for toggling
+}
+
+export interface Workspace {
+    id: string
+    name: string
+    port: number
+    configContent: string
+    endpoints: EndpointDef[]
+    variables: Record<string, string>
+    isRunning: boolean
+    logs: LogEntry[]
+    integrationProperty?: string // Property name to extract integration (e.g., "x-amazon-apigateway-integration")
+    bypassEnabled?: boolean // When true, disabled endpoints will bypass to bypassUri
+    bypassUri?: string // URI to redirect disabled endpoints when bypass is enabled
+}
+
+export interface LogEntry {
+    timestamp: string
+    message: string
+    type?: 'info' | 'error' | 'success'
+}

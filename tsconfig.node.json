@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "composite": true,
+        "module": "CommonJS",
+        "outDir": "dist",
+        "rootDir": "src",
+        "moduleResolution": "Node",
+        "allowSyntheticDefaultImports": true
+    },
+    "include": [
+        "src/main",
+        "src/preload"
+    ]
+}
