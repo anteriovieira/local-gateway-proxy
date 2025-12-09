@@ -56,9 +56,12 @@ export class ServerManager {
             const resolveUrl = (template: string, params: Record<string, string>) => {
                 let url = template
                 // Replace stageVariables
+                // Variables are stored with just the name (e.g., "userId")
+                // But the template uses ${stageVariables.userId}
                 for (const [key, val] of Object.entries(variables)) {
-                    // key is like "stageVariables.foo"
-                    url = url.replace('${' + key + '}', val || '')
+                    // key is just the variable name (e.g., "userId")
+                    // Replace ${stageVariables.key} with the value
+                    url = url.replace('${stageVariables.' + key + '}', val || '')
                 }
                 // Replace path params
                 for (const [key, val] of Object.entries(params)) {

@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react'
 import { Workspace } from '../../types'
 import { EndpointList } from '../Switchboard/EndpointList'
 import { Terminal } from '../Switchboard/Terminal'
-import { Upload, ChevronDown, ChevronRight, CheckSquare } from 'lucide-react'
+import { Upload, ChevronDown, ChevronRight, CheckSquare, Trash2 } from 'lucide-react'
 import { cn } from '../../utils'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui/resizable'
 import { JsonEditor } from '../ui/JsonEditor'
@@ -13,9 +13,10 @@ interface WorkspaceViewProps {
     onToggleServer: () => void
     onEndpointToggle: (index: number) => void
     onToggleAllEndpoints: (enabled: boolean) => void
+    onClearLogs: () => void
 }
 
-export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdate, onToggleServer, onEndpointToggle, onToggleAllEndpoints }) => {
+export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdate, onToggleServer, onEndpointToggle, onToggleAllEndpoints, onClearLogs }) => {
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [isConfigExpanded, setIsConfigExpanded] = useState(true)
     const [isVariablesExpanded, setIsVariablesExpanded] = useState(true)
@@ -165,8 +166,18 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
                 {/* Panel 3: Terminal */}
                 <ResizablePanel defaultSize={30} minSize={15}>
                     <div className="h-full flex flex-col bg-black">
-                        <div className="p-3 border-b border-zinc-900 bg-zinc-900/30 text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                            Live Logs
+                        <div className="p-3 border-b border-zinc-900 bg-zinc-900/30 text-xs font-medium text-zinc-400 uppercase tracking-wider flex items-center justify-between">
+                            <span>Live Logs</span>
+                            {workspace.logs.length > 0 && (
+                                <button
+                                    onClick={onClearLogs}
+                                    className="flex items-center gap-1.5 px-2 py-1 text-[10px] text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded transition-colors"
+                                    title="Clear logs"
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>Clear</span>
+                                </button>
+                            )}
                         </div>
                         <div className="flex-1 overflow-hidden p-4">
                             <Terminal logs={workspace.logs} />

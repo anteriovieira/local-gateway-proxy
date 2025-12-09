@@ -322,6 +322,13 @@ function App() {
         toast.success(`Workspace "${ws.name}" removed`)
     }
 
+    const clearLogs = (workspaceId: string) => {
+        setWorkspaces(prev => prev.map(ws => {
+            if (ws.id !== workspaceId) return ws
+            return { ...ws, logs: [] }
+        }))
+    }
+
     const activeWorkspace = workspaces.find(w => w.id === activeId)
 
     return (
@@ -359,6 +366,7 @@ function App() {
                         onToggleServer={() => toggleServer(activeWorkspace.id)}
                         onEndpointToggle={(idx) => toggleEndpoint(activeWorkspace.id, idx)}
                         onToggleAllEndpoints={(enabled) => toggleAllEndpoints(activeWorkspace.id, enabled)}
+                        onClearLogs={() => clearLogs(activeWorkspace.id)}
                     />
                 ) : (
                     <div className="flex-1 flex items-center justify-center text-zinc-800">

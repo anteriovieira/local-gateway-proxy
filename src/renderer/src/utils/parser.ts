@@ -51,7 +51,9 @@ export function parseGatewayConfig(
                         VARIABLE_REGEX.lastIndex = 0 // Reset regex
                         
                         while ((match = VARIABLE_REGEX.exec(uriTemplate)) !== null) {
-                            const varName = `stageVariables.${match[1]}`
+                            // Extract only the variable name, not the "stageVariables." prefix
+                            // The full format ${stageVariables.varName} is kept in the template
+                            const varName = match[1] // Just the variable name (e.g., "userId")
                             vars.push(varName)
                             variableSet.add(varName)
                         }
