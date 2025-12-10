@@ -5,7 +5,6 @@ import type { BrowserWindow } from 'electron'
 // Use require for CommonJS compatibility with Electron main process
 const express = require('express')
 const cors = require('cors')
-const bodyParser = require('body-parser')
 const httpProxy = require('http-proxy')
 const zlib = require('zlib')
 const { Buffer } = require('buffer')
@@ -82,7 +81,8 @@ export class ServerManager {
 
             const app = express()
             app.use(cors())
-            app.use(bodyParser.json()) // Keep for now as we might need it, but be aware of proxy stream issues if modifying body
+            // Don't use bodyParser.json() globally as it consumes the stream
+            // We'll buffer the body manually for logging without consuming the stream
 
             // Helper to replace variables
             const resolveUrl = (template: string, params: Record<string, string>) => {
@@ -202,14 +202,6 @@ export class ServerManager {
                             const userAgent = req.get('user-agent') || 'unknown'
                             const apiKey = req.get('authorization')?.replace(/^Bearer /, '') || req.get('x-api-key') || undefined
                             const idempotencyKey = req.get('idempotency-key') || req.get('x-idempotency-key') || undefined
-                            let requestBody = ''
-                            
-                            // Capture request body if present
-                            if (req.body && typeof req.body === 'object') {
-                                requestBody = JSON.stringify(req.body)
-                            } else if (typeof req.body === 'string') {
-                                requestBody = req.body
-                            }
 
                             // Send log to renderer
                             sendLog(workspaceId, `${req.method} ${requestedPath} -> ${targetUrl}`, 'info', mainWindow)
@@ -371,7 +363,7 @@ export class ServerManager {
                                     apiKey: apiKey ? (apiKey.length > 20 ? apiKey.substring(0, 20) + '...' : apiKey) : undefined,
                                     idempotencyKey,
                                     responseBody: responseBody || undefined,
-                                    requestBody: requestBody || undefined,
+                                    requestBody: undefined, // Request body logging disabled to avoid stream consumption issues
                                     isBypass: false
                                 }, mainWindow)
                                 
