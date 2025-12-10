@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { ApiLogEntry } from '../../types'
 import {
-    Search, X, Copy,
+    Search, X,
     RefreshCw, Trash2, Terminal,
     ListRestart, ArrowRight,
     SplitIcon
 } from 'lucide-react'
+import { CopyButton } from '../ui/CopyButton'
 import { highlight, languages } from 'prismjs'
 import 'prismjs/components/prism-json'
 import { cn } from '../../utils'
@@ -152,9 +153,6 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
         })
     }
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text)
-    }
 
     const toggleMethodFilter = (method: string) => {
         setFilters(prev => ({
@@ -271,7 +269,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
                             return (
                                 <div key={dateGroup} className="mb-4">
-                                    <div className="px-4 py-2 bg-zinc-900/50 border-b border-zinc-800 sticky top-0 flex gap-2 items-center justify-between">
+                                    <div className="px-4 py-2 bg-zinc-900/80 border-b border-zinc-800 sticky top-0 flex gap-2 items-center justify-between">
                                         <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                                             {dateGroup}
                                         </h3>
@@ -366,13 +364,12 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                     {selectedLog.id && (
                                         <div className="flex items-center gap-3">
                                             <span className="text-xs text-zinc-500 w-32">Request ID:</span>
-                                            <button
-                                                onClick={() => copyToClipboard(selectedLog.id)}
-                                                className="text-xs text-purple-400 hover:text-purple-300 font-mono flex items-center gap-1"
-                                            >
-                                                {selectedLog.id}
-                                                <Copy className="w-3 h-3" />
-                                            </button>
+                                            <CopyButton
+                                                text={selectedLog.id}
+                                                variant="inline"
+                                                iconSize="w-3 h-3"
+                                                className="text-xs text-purple-400 hover:text-purple-300 font-mono"
+                                            />
                                         </div>
                                     )}
 
@@ -454,13 +451,10 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                             <h3 className="text-sm font-semibold text-zinc-300">
                                                 Response Body
                                             </h3>
-                                            <button
-                                                onClick={() => copyToClipboard(selectedLog.responseBody || '')}
-                                                className="p-1.5 hover:bg-zinc-800 rounded transition-colors"
+                                            <CopyButton
+                                                text={selectedLog.responseBody || ''}
                                                 title="Copy response body"
-                                            >
-                                                <Copy className="w-4 h-4 text-zinc-400" />
-                                            </button>
+                                            />
                                         </div>
                                         <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
                                             <pre 
@@ -495,13 +489,10 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                             <h3 className="text-sm font-semibold text-zinc-300">
                                                 Request Body
                                             </h3>
-                                            <button
-                                                onClick={() => copyToClipboard(selectedLog.requestBody || '')}
-                                                className="p-1.5 hover:bg-zinc-800 rounded transition-colors"
+                                            <CopyButton
+                                                text={selectedLog.requestBody || ''}
                                                 title="Copy request body"
-                                            >
-                                                <Copy className="w-4 h-4 text-zinc-400" />
-                                            </button>
+                                            />
                                         </div>
                                         <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
                                             <pre 
