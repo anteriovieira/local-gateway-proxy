@@ -189,6 +189,10 @@ export class ServerManager {
 
                 if ((app as any)[method]) {
                     (app as any)[method](expressPath, (req: Request, res: Response) => {
+                        // Capture the original requested path BEFORE modifying req.url
+                        // Declare outside try block so it's accessible in catch block
+                        const requestedPath = req.path
+                        
                         try {
                             const startTime = Date.now()
                             const targetUrl = resolveUrl(ep.uriTemplate, req.params as Record<string, string>)
@@ -208,7 +212,7 @@ export class ServerManager {
                             }
 
                             // Send log to renderer
-                            sendLog(workspaceId, `${req.method} ${req.path} -> ${targetUrl}`, 'info', mainWindow)
+                            sendLog(workspaceId, `${req.method} ${requestedPath} -> ${targetUrl}`, 'info', mainWindow)
 
                             // We need to parse target to get base for http-proxy
                             // Note: if targetUrl is invalid, this throws
@@ -349,7 +353,7 @@ export class ServerManager {
                                 
                                 sendLog(
                                     workspaceId, 
-                                    `${statusEmoji} ${req.method} ${req.path} <- ${statusCode} ${res.statusMessage || ''} [${durationStr}]${responseBody ? ` (${responseBody.length} bytes)` : ''}`,
+                                    `${statusEmoji} ${req.method} ${requestedPath} <- ${statusCode} ${res.statusMessage || ''} [${durationStr}]${responseBody ? ` (${responseBody.length} bytes)` : ''}`,
                                     logType,
                                     mainWindow
                                 )
@@ -357,7 +361,7 @@ export class ServerManager {
                                 // Send structured API log
                                 sendApiLog(workspaceId, {
                                     method: req.method,
-                                    path: req.path,
+                                    path: requestedPath,
                                     statusCode,
                                     statusMessage: res.statusMessage,
                                     targetUrl,
@@ -399,7 +403,7 @@ export class ServerManager {
                             const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
                             sendApiLog(workspaceId, {
                                 method: req.method,
-                                path: req.path,
+                                path: requestedPath,
                                 statusCode: 500,
                                 statusMessage: 'Internal Server Error',
                                 error: err.message,
@@ -428,8 +432,13 @@ export class ServerManager {
 
                     // If it doesn't match an enabled endpoint, redirect to bypassUri
                     if (!matchesEnabledEndpoint) {
+                        // Capture the original requested path BEFORE modifying req.url
+                        // Declare outside try block so it's accessible in catch block
+                        const requestedPath = req.path
+                        
                         try {
                             const startTime = Date.now()
+                            
                             // Use bypassUri as base URL and append the request path
                             // Example: bypassUri = "https://api.app.com/api", req.path = "/posts" 
                             // Result: "https://api.app.com/api/posts"
@@ -444,7 +453,7 @@ export class ServerManager {
                             baseUrl = baseUrl.replace(/\/$/, '')
                             
                             // Get request path (remove leading slash if present, we'll add it)
-                            const requestPath = req.path.startsWith('/') ? req.path : '/' + req.path
+                            const requestPath = requestedPath.startsWith('/') ? requestedPath : '/' + requestedPath
                             
                             // Build target URL: baseUrl + requestPath + query string
                             const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''
@@ -465,7 +474,7 @@ export class ServerManager {
                             }
 
                             // Send log to renderer
-                            sendLog(workspaceId, `${req.method} ${req.path} -> ${targetUrl} [BYPASS]`, 'info', mainWindow)
+                            sendLog(workspaceId, `${req.method} ${requestedPath} -> ${targetUrl} [BYPASS]`, 'info', mainWindow)
 
                             // Parse target URL
                             const urlObj = new URL(targetUrl)
@@ -605,7 +614,7 @@ export class ServerManager {
                                 
                                 sendLog(
                                     workspaceId, 
-                                    `${statusEmoji} ${req.method} ${req.path} <- ${statusCode} ${res.statusMessage || ''} [${durationStr}] [BYPASS]${responseBody ? ` (${responseBody.length} bytes)` : ''}`,
+                                    `${statusEmoji} ${req.method} ${requestedPath} <- ${statusCode} ${res.statusMessage || ''} [${durationStr}] [BYPASS]${responseBody ? ` (${responseBody.length} bytes)` : ''}`,
                                     logType,
                                     mainWindow
                                 )
@@ -613,7 +622,7 @@ export class ServerManager {
                                 // Send structured API log
                                 sendApiLog(workspaceId, {
                                     method: req.method,
-                                    path: req.path,
+                                    path: requestedPath,
                                     statusCode,
                                     statusMessage: res.statusMessage,
                                     targetUrl,
@@ -654,7 +663,7 @@ export class ServerManager {
                             const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
                             sendApiLog(workspaceId, {
                                 method: req.method,
-                                path: req.path,
+                                path: requestedPath,
                                 statusCode: 500,
                                 statusMessage: 'Internal Server Error',
                                 error: err.message,
