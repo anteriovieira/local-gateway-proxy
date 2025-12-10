@@ -1,5 +1,6 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import { systemProxyManager } from './systemProxy'
 
 // Store main window reference for sending messages
 let mainWindow: BrowserWindow | null = null
@@ -89,10 +90,36 @@ export function sendLogToRenderer(workspaceId: string, message: string, type: 'i
 
 app.whenReady().then(() => {
     // IPC Handlers
-    ipcMain.handle('start-server', async (event, { workspaceId, port, endpoints, variables, bypassEnabled, bypassUri }) => {
+    ipcMain.handle('start-server', async (event, { workspaceId, port, endpoints, variables, bypassEnabled, bypassUri, systemProxyEnabled }) => {
         const { serverManager } = await import('./server')
         try {
-            await serverManager.startServer(workspaceId, port, endpoints, variables, bypassEnabled || false, bypassUri || '', mainWindow)
+            await serverManager.startServer(workspaceId, port, endpoints, variables, bypassEnabled || false, bypassUri || '', systemProxyEnabled || false, mainWindow)
+            
+            // Configure system proxy if enabled
+            if (systemProxyEnabled && process.platform === 'darwin') {
+                try {
+                    await systemProxyManager.setSystemProxy('localhost', port)
+                    if (mainWindow && !mainWindow.isDestroyed()) {
+                        mainWindow.webContents.send('server-log', {
+                            workspaceId,
+                            message: `System proxy configured: localhost:${port}`,
+                            type: 'success',
+                            timestamp: new Date().toLocaleTimeString()
+                        })
+                    }
+                } catch (proxyErr: any) {
+                    console.error('Failed to set system proxy:', proxyErr)
+                    if (mainWindow && !mainWindow.isDestroyed()) {
+                        mainWindow.webContents.send('server-log', {
+                            workspaceId,
+                            message: `Warning: Failed to configure system proxy: ${proxyErr.message}`,
+                            type: 'error',
+                            timestamp: new Date().toLocaleTimeString()
+                        })
+                    }
+                }
+            }
+            
             return { success: true }
         } catch (err: any) {
             return { success: false, error: err.message }
@@ -102,6 +129,24 @@ app.whenReady().then(() => {
     ipcMain.handle('stop-server', async (event, { workspaceId }) => {
         const { serverManager } = await import('./server')
         await serverManager.stopServer(workspaceId, mainWindow)
+        
+        // Remove system proxy if it was set by this workspace
+        if (process.platform === 'darwin' && systemProxyManager.isProxySetByApp()) {
+            try {
+                await systemProxyManager.unsetSystemProxy()
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('server-log', {
+                        workspaceId,
+                        message: 'System proxy removed',
+                        type: 'info',
+                        timestamp: new Date().toLocaleTimeString()
+                    })
+                }
+            } catch (proxyErr: any) {
+                console.error('Failed to remove system proxy:', proxyErr)
+            }
+        }
+        
         return { success: true }
     })
 
@@ -109,6 +154,43 @@ app.whenReady().then(() => {
     ipcMain.handle('get-running-servers', async () => {
         const { serverManager } = await import('./server')
         return serverManager.getRunningServers()
+    })
+
+    // System proxy control handlers
+    ipcMain.handle('set-system-proxy', async (event, { host, port }) => {
+        if (process.platform !== 'darwin') {
+            return { success: false, error: 'System proxy is only supported on macOS' }
+        }
+        try {
+            await systemProxyManager.setSystemProxy(host, port)
+            return { success: true }
+        } catch (err: any) {
+            return { success: false, error: err.message }
+        }
+    })
+
+    ipcMain.handle('unset-system-proxy', async () => {
+        if (process.platform !== 'darwin') {
+            return { success: false, error: 'System proxy is only supported on macOS' }
+        }
+        try {
+            await systemProxyManager.unsetSystemProxy()
+            return { success: true }
+        } catch (err: any) {
+            return { success: false, error: err.message }
+        }
+    })
+
+    ipcMain.handle('get-system-proxy', async () => {
+        if (process.platform !== 'darwin') {
+            return { success: false, proxy: null }
+        }
+        try {
+            const proxy = await systemProxyManager.getSystemProxy()
+            return { success: true, proxy }
+        } catch (err: any) {
+            return { success: false, error: err.message, proxy: null }
+        }
     })
 
     // Set app user model id for windows
@@ -122,7 +204,23 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+    // Clean up system proxy before quitting
+    if (process.platform === 'darwin' && systemProxyManager.isProxySetByApp()) {
+        systemProxyManager.unsetSystemProxy().catch(err => {
+            console.error('Failed to clean up system proxy on quit:', err)
+        })
+    }
+    
     if (process.platform !== 'darwin') {
         app.quit()
+    }
+})
+
+// Clean up on app quit
+app.on('before-quit', () => {
+    if (process.platform === 'darwin' && systemProxyManager.isProxySetByApp()) {
+        systemProxyManager.unsetSystemProxy().catch(err => {
+            console.error('Failed to clean up system proxy on quit:', err)
+        })
     }
 })

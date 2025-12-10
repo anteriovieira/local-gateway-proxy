@@ -136,6 +136,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ workspace, isOpen,
                                         </div>
                                     </div>
 
+                                    {/* System Proxy */}
+                                    <div className="flex items-center justify-between py-3 border-b border-zinc-800/50">
+                                        <div className="flex-1">
+                                            <div className="text-sm font-medium text-zinc-300">System Proxy</div>
+                                            <div className="text-xs text-zinc-500 mt-0.5">
+                                                Configure macOS system proxy to route all HTTP/HTTPS requests through this server. Requires administrator permissions.
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 flex justify-end">
+                                            <button
+                                                onClick={() => onUpdate({ systemProxyEnabled: !(workspace.systemProxyEnabled || false) })}
+                                                className={cn(
+                                                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-zinc-900",
+                                                    workspace.systemProxyEnabled ? "bg-blue-600" : "bg-zinc-700"
+                                                )}
+                                            >
+                                                <span
+                                                    className={cn(
+                                                        "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                                                        workspace.systemProxyEnabled ? "translate-x-6" : "translate-x-1"
+                                                    )}
+                                                />
+                                            </button>
+                                        </div>
+                                    </div>
 
                                     {/* Endpoints Summary */}
                                     <div className="py-3 border-b border-zinc-800/50">

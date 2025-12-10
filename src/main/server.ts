@@ -71,7 +71,7 @@ export class ServerManager {
         return Array.from(this.servers.keys())
     }
 
-    startServer(workspaceId: string, port: number, endpoints: any[], variables: Record<string, string>, bypassEnabled: boolean = false, bypassUri: string = '', mainWindow: BrowserWindow | null = null) {
+    startServer(workspaceId: string, port: number, endpoints: any[], variables: Record<string, string>, bypassEnabled: boolean = false, bypassUri: string = '', systemProxyEnabled: boolean = false, mainWindow: BrowserWindow | null = null) {
         return new Promise<void>((resolve, reject) => {
             // Stop existing server for this workspace if any
             if (this.servers.has(workspaceId)) {

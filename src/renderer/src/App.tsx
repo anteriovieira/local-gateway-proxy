@@ -30,7 +30,8 @@ function loadWorkspacesFromStorage(): Workspace[] {
                 apiLogs: ws.apiLogs || [],
                 integrationProperty: ws.integrationProperty || 'x-amazon-apigateway-integration',
                 bypassEnabled: ws.bypassEnabled !== undefined ? ws.bypassEnabled : true, // Default to true
-                bypassUri: ws.bypassUri || ''
+                bypassUri: ws.bypassUri || '',
+                systemProxyEnabled: ws.systemProxyEnabled !== undefined ? ws.systemProxyEnabled : false // Default to false
             }))
         }
     } catch (e) {
@@ -236,7 +237,8 @@ function App() {
                 endpoints: ws.endpoints, // Pass all endpoints (enabled and disabled) for bypass support
                 variables: ws.variables,
                 bypassEnabled: ws.bypassEnabled !== false, // Default to true
-                bypassUri: ws.bypassUri || ''
+                bypassUri: ws.bypassUri || '',
+                systemProxyEnabled: ws.systemProxyEnabled || false
             })
 
             console.log('[DEBUG] IPC result:', result)
@@ -296,7 +298,8 @@ function App() {
                 endpoints: ws.endpoints,
                 variables: ws.variables,
                 bypassEnabled: ws.bypassEnabled !== false,
-                bypassUri: ws.bypassUri || ''
+                bypassUri: ws.bypassUri || '',
+                systemProxyEnabled: ws.systemProxyEnabled || false
             })
 
             if (result?.success) {

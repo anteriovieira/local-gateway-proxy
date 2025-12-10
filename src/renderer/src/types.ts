@@ -19,6 +19,7 @@ export interface Workspace {
     integrationProperty?: string // Property name to extract integration (e.g., "x-amazon-apigateway-integration")
     bypassEnabled?: boolean // When true, disabled endpoints will bypass to bypassUri
     bypassUri?: string // URI to redirect disabled endpoints when bypass is enabled
+    systemProxyEnabled?: boolean // When true, configures system proxy to route all HTTP/HTTPS requests through local proxy
 }
 
 export interface LogEntry {
