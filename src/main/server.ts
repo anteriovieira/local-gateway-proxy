@@ -36,10 +36,12 @@ function sendLog(workspaceId: string, message: string, type: 'info' | 'error' | 
 }
 
 // Helper function to send API logs to renderer
+// If logId and isUpdate are provided, it will update an existing log entry; otherwise creates a new one
 function sendApiLog(workspaceId: string, apiLog: {
     method: string
     path: string
-    statusCode: number
+    statusCode?: number
+    status?: 'pending' | 'completed' | 'error'
     statusMessage?: string
     targetUrl?: string
     duration?: number
@@ -52,15 +54,18 @@ function sendApiLog(workspaceId: string, apiLog: {
     requestBody?: string
     isBypass?: boolean
     error?: string
-}, mainWindow: BrowserWindow | null) {
+    timestamp?: string
+}, mainWindow: BrowserWindow | null, logId?: string, isUpdate: boolean = false) {
     if (mainWindow && !mainWindow.isDestroyed()) {
+        const finalId = logId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         mainWindow.webContents.send('api-log', {
             workspaceId,
             apiLog: {
-                id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                timestamp: new Date().toISOString(),
-                ...apiLog
-            }
+                id: finalId,
+                ...apiLog,
+                timestamp: apiLog.timestamp || new Date().toISOString()
+            },
+            isUpdate: isUpdate && !!logId // Only update if explicitly requested and logId exists
         })
     }
 }
@@ -194,6 +199,9 @@ export class ServerManager {
                         // Declare outside try block so it's accessible in catch block
                         const requestedPath = req.path
                         
+                        // Generate unique log ID for this request (outside try block for error handling)
+                        const logId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+                        
                         try {
                             const startTime = Date.now()
                             const targetUrl = resolveUrl(ep.uriTemplate, req.params as Record<string, string>)
@@ -203,6 +211,20 @@ export class ServerManager {
                             const userAgent = req.get('user-agent') || 'unknown'
                             const apiKey = req.get('authorization')?.replace(/^Bearer /, '') || req.get('x-api-key') || undefined
                             const idempotencyKey = req.get('idempotency-key') || req.get('x-idempotency-key') || undefined
+
+                            // Send initial API log with pending status (create new entry)
+                            sendApiLog(workspaceId, {
+                                method: req.method,
+                                path: requestedPath,
+                                status: 'pending',
+                                targetUrl,
+                                ipAddress,
+                                userAgent,
+                                apiKey: apiKey ? (apiKey.length > 20 ? apiKey.substring(0, 20) + '...' : apiKey) : undefined,
+                                idempotencyKey,
+                                isBypass: false,
+                                timestamp: new Date().toISOString()
+                            }, mainWindow, logId, false) // false = create new entry
 
                             // Capture request body
                             // Note: This approach collects chunks as they flow through the stream.
@@ -380,11 +402,12 @@ export class ServerManager {
                                     mainWindow
                                 )
                                 
-                                // Send structured API log
+                                // Update API log with completed status
                                 sendApiLog(workspaceId, {
                                     method: req.method,
                                     path: requestedPath,
                                     statusCode,
+                                    status: statusCode >= 200 && statusCode < 300 ? 'completed' : statusCode >= 400 ? 'error' : 'completed',
                                     statusMessage: res.statusMessage,
                                     targetUrl,
                                     duration,
@@ -395,7 +418,7 @@ export class ServerManager {
                                     responseBody: responseBody || undefined,
                                     requestBody: requestBody || undefined,
                                     isBypass: false
-                                }, mainWindow)
+                                }, mainWindow, logId, true) // true = update existing entry
                                 
                                 // Log response body for debugging (truncated if too long)
                                 if (responseBody) {
@@ -421,17 +444,18 @@ export class ServerManager {
                             sendLog(workspaceId, errorMsg, 'error', mainWindow)
                             console.error(`[Workspace ${workspaceId}] ${errorMsg}`, err)
                             
-                            // Send API log for error
+                            // Update API log for error
                             const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
                             sendApiLog(workspaceId, {
                                 method: req.method,
                                 path: requestedPath,
                                 statusCode: 500,
+                                status: 'error',
                                 statusMessage: 'Internal Server Error',
                                 error: err.message,
                                 ipAddress,
                                 isBypass: false
-                            }, mainWindow)
+                            }, mainWindow, logId, true) // true = update existing entry
                             
                             res.status(500).json({ error: err.message })
                         }
@@ -457,6 +481,9 @@ export class ServerManager {
                         // Capture the original requested path BEFORE modifying req.url
                         // Declare outside try block so it's accessible in catch block
                         const requestedPath = req.path
+                        
+                        // Generate unique log ID for this request
+                        const logId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
                         
                         try {
                             const startTime = Date.now()
@@ -494,6 +521,21 @@ export class ServerManager {
                             } else if (typeof req.body === 'string') {
                                 requestBody = req.body
                             }
+
+                            // Send initial API log with pending status (create new entry)
+                            sendApiLog(workspaceId, {
+                                method: req.method,
+                                path: requestedPath,
+                                status: 'pending',
+                                targetUrl,
+                                ipAddress,
+                                userAgent,
+                                apiKey: apiKey ? (apiKey.length > 20 ? apiKey.substring(0, 20) + '...' : apiKey) : undefined,
+                                idempotencyKey,
+                                requestBody: requestBody || undefined,
+                                isBypass: true,
+                                timestamp: new Date().toISOString()
+                            }, mainWindow, logId, false) // false = create new entry
 
                             // Send log to renderer
                             sendLog(workspaceId, `${req.method} ${requestedPath} -> ${targetUrl} [BYPASS]`, 'info', mainWindow)
@@ -641,11 +683,12 @@ export class ServerManager {
                                     mainWindow
                                 )
                                 
-                                // Send structured API log
+                                // Update API log with completed status
                                 sendApiLog(workspaceId, {
                                     method: req.method,
                                     path: requestedPath,
                                     statusCode,
+                                    status: statusCode >= 200 && statusCode < 300 ? 'completed' : statusCode >= 400 ? 'error' : 'completed',
                                     statusMessage: res.statusMessage,
                                     targetUrl,
                                     duration,
@@ -656,7 +699,7 @@ export class ServerManager {
                                     responseBody: responseBody || undefined,
                                     requestBody: requestBody || undefined,
                                     isBypass: true
-                                }, mainWindow)
+                                }, mainWindow, logId, true) // true = update existing entry
                                 
                                 // Log response body for debugging (truncated if too long)
                                 if (responseBody) {
@@ -681,17 +724,18 @@ export class ServerManager {
                             sendLog(workspaceId, errorMsg, 'error', mainWindow)
                             console.error(`[Workspace ${workspaceId}] ${errorMsg}`, err)
                             
-                            // Send API log for error
+                            // Update API log for error
                             const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
                             sendApiLog(workspaceId, {
                                 method: req.method,
                                 path: requestedPath,
                                 statusCode: 500,
+                                status: 'error',
                                 statusMessage: 'Internal Server Error',
                                 error: err.message,
                                 ipAddress,
                                 isBypass: true
-                            }, mainWindow)
+                            }, mainWindow, logId, true) // true = update existing entry
                             
                             res.status(500).json({ error: err.message })
                         }

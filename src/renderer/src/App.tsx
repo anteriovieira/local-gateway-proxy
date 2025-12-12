@@ -102,9 +102,31 @@ function App() {
             }))
         }
 
-        const handleApiLog = (data: { workspaceId: string; apiLog: any }) => {
+        const handleApiLog = (data: { workspaceId: string; apiLog: any; isUpdate?: boolean }) => {
             setWorkspaces(prev => prev.map(ws => {
                 if (ws.id !== data.workspaceId) return ws
+                
+                // Always try to find existing log by ID first (if ID exists and isUpdate is true)
+                if (data.isUpdate && data.apiLog.id) {
+                    const existingIndex = ws.apiLogs.findIndex(log => log.id === data.apiLog.id)
+                    if (existingIndex >= 0) {
+                        // Update existing entry - preserve original timestamp if not provided in update
+                        const updatedLogs = [...ws.apiLogs]
+                        const existingLog = updatedLogs[existingIndex]
+                        updatedLogs[existingIndex] = { 
+                            ...existingLog, 
+                            ...data.apiLog,
+                            // Preserve original timestamp if update doesn't provide one
+                            timestamp: data.apiLog.timestamp || existingLog.timestamp
+                        }
+                        return {
+                            ...ws,
+                            apiLogs: updatedLogs
+                        }
+                    }
+                }
+                
+                // Otherwise, add new log entry
                 return {
                     ...ws,
                     apiLogs: [...(ws.apiLogs || []), data.apiLog]

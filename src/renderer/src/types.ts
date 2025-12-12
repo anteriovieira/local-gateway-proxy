@@ -32,7 +32,8 @@ export interface ApiLogEntry {
     timestamp: string
     method: string
     path: string
-    statusCode: number
+    statusCode?: number // Optional since pending requests don't have a status code yet
+    status?: 'pending' | 'completed' | 'error' // Request status
     statusMessage?: string
     targetUrl?: string
     duration?: number

@@ -90,7 +90,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
         // Status filter
         if (filters.status && filters.status.length > 0) {
-            filtered = filtered.filter(log => filters.status!.includes(log.statusCode))
+            filtered = filtered.filter(log => log.statusCode !== undefined && filters.status!.includes(log.statusCode))
         }
 
         // Method filter
@@ -113,10 +113,12 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
         Array.from(new Set(apiLogs.map(log => log.method))),
         [apiLogs]
     )
-    const uniqueStatusCodes = useMemo(() =>
-        Array.from(new Set(apiLogs.map(log => log.statusCode))).sort((a, b) => a - b),
-        [apiLogs]
-    )
+    const uniqueStatusCodes = useMemo(() => {
+        const codes = apiLogs
+            .map(log => log.statusCode)
+            .filter((code): code is number => code !== undefined)
+        return Array.from(new Set(codes)).sort((a, b) => a - b)
+    }, [apiLogs])
 
     // Auto-select first log if none selected
     useEffect(() => {
@@ -127,7 +129,14 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
         }
     }, [filteredLogs, selectedLog])
 
-    const getStatusColor = (status: number) => {
+    const getStatusColor = (status: number | undefined, logStatus?: 'pending' | 'completed' | 'error') => {
+        // Handle pending status
+        if (logStatus === 'pending') {
+            return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+        }
+        
+        // Handle completed/error status with status code
+        if (status === undefined) return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
         if (status >= 200 && status < 300) return 'bg-green-500/20 text-green-400 border-green-500/30'
         if (status >= 400) return 'bg-red-500/20 text-red-400 border-red-500/30'
         return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
@@ -296,12 +305,22 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                                 )}
                                             >
                                                 <div className="flex items-center gap-2 pr-5 relative">
-                                                    <span className={cn(
-                                                        "px-2 py-0.5 text-[10px] font-medium rounded border",
-                                                        getStatusColor(log.statusCode)
-                                                    )}>
-                                                        {log.statusCode} {log.statusCode >= 200 && log.statusCode < 300 ? 'OK' : ''}
-                                                    </span>
+                                                    {log.status === 'pending' ? (
+                                                        <span className={cn(
+                                                            "px-2 py-0.5 text-[10px] font-medium rounded border flex items-center gap-1",
+                                                            getStatusColor(log.statusCode, log.status)
+                                                        )}>
+                                                            <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                                                            Pending
+                                                        </span>
+                                                    ) : (
+                                                        <span className={cn(
+                                                            "px-2 py-0.5 text-[10px] font-medium rounded border",
+                                                            getStatusColor(log.statusCode, log.status)
+                                                        )}>
+                                                            {log.statusCode || '?'} {log.statusCode && log.statusCode >= 200 && log.statusCode < 300 ? 'OK' : ''}
+                                                        </span>
+                                                    )}
                                                     <span className="text-xs font-mono text-zinc-300">
                                                         {log.method}
                                                     </span>
@@ -353,12 +372,22 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3">
                                         <span className="text-xs text-zinc-500 w-32">Status:</span>
-                                        <span className={cn(
-                                            "px-2 py-0.5 text-xs font-medium rounded border",
-                                            getStatusColor(selectedLog.statusCode)
-                                        )}>
-                                            {selectedLog.statusCode} {selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? 'OK' : ''}
-                                        </span>
+                                        {selectedLog.status === 'pending' ? (
+                                            <span className={cn(
+                                                "px-2 py-0.5 text-xs font-medium rounded border flex items-center gap-1.5",
+                                                getStatusColor(selectedLog.statusCode, selectedLog.status)
+                                            )}>
+                                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                                Pending
+                                            </span>
+                                        ) : (
+                                            <span className={cn(
+                                                "px-2 py-0.5 text-xs font-medium rounded border",
+                                                getStatusColor(selectedLog.statusCode, selectedLog.status)
+                                            )}>
+                                                {selectedLog.statusCode || '?'} {selectedLog.statusCode && selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? 'OK' : ''}
+                                            </span>
+                                        )}
                                     </div>
 
                                     {selectedLog.id && (
