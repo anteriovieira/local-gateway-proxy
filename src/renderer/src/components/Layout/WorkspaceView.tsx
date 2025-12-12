@@ -21,8 +21,13 @@ interface WorkspaceViewProps {
 export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdate, onToggleServer, onRestartServer, onEndpointToggle, onToggleAllEndpoints, onClearLogs }) => {
     const [isTerminalLogOpen, setIsTerminalLogOpen] = useState(false)
     const [isDefinitionsModalOpen, setIsDefinitionsModalOpen] = useState(false)
+    const [logSearchQuery, setLogSearchQuery] = useState('')
 
     const allEndpointsEnabled = workspace.endpoints.length > 0 && workspace.endpoints.every(ep => ep.enabled !== false)
+
+    const handleEndpointClick = (path: string) => {
+        setLogSearchQuery(path)
+    }
 
     return (
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-zinc-950">
@@ -65,6 +70,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
                             <EndpointList 
                                 endpoints={workspace.endpoints} 
                                 onToggle={onEndpointToggle}
+                                onEndpointClick={handleEndpointClick}
                             />
                         </div>
                     </div>
@@ -78,6 +84,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
                         apiLogs={workspace.apiLogs || []}
                         onClearLogs={onClearLogs}
                         onOpenTerminalLog={() => setIsTerminalLogOpen(true)}
+                        searchQuery={logSearchQuery}
+                        onSearchQueryChange={setLogSearchQuery}
                     />
                 </ResizablePanel>
             </ResizablePanelGroup>

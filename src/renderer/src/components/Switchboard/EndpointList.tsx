@@ -7,6 +7,7 @@ import { Check, Search } from 'lucide-react'
 interface EndpointListProps {
     endpoints: EndpointDef[]
     onToggle: (index: number) => void
+    onEndpointClick?: (path: string) => void
 }
 
 const METHODS = ['ALL', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as const
@@ -17,7 +18,7 @@ interface EndpointItem {
     originalIndex: number
 }
 
-export const EndpointList: React.FC<EndpointListProps> = ({ endpoints, onToggle }) => {
+export const EndpointList: React.FC<EndpointListProps> = ({ endpoints, onToggle, onEndpointClick }) => {
     const [searchQuery, setSearchQuery] = useState('')
     const [methodFilter, setMethodFilter] = useState<string>('ALL')
     const parentRef = useRef<HTMLDivElement>(null)
@@ -131,7 +132,10 @@ export const EndpointList: React.FC<EndpointListProps> = ({ endpoints, onToggle 
                                         )}
                                     >
                                         <button
-                                            onClick={() => onToggle(originalIndex)}
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                onToggle(originalIndex)
+                                            }}
                                             className={cn(
                                                 "w-5 h-5 rounded flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50 shrink-0",
                                                 ep.enabled !== false ? "bg-blue-500 text-white" : "bg-zinc-800 text-zinc-600"
@@ -147,9 +151,16 @@ export const EndpointList: React.FC<EndpointListProps> = ({ endpoints, onToggle 
                                             {ep.method.toUpperCase()}
                                         </span>
 
-                                        <span className="font-mono truncate flex-1" title={ep.path}>
+                                        <button
+                                            onClick={() => onEndpointClick?.(ep.path)}
+                                            className={cn(
+                                                "font-mono truncate flex-1 text-left hover:text-purple-400 transition-colors",
+                                                onEndpointClick && "cursor-pointer"
+                                            )}
+                                            title={onEndpointClick ? `Click to filter logs by ${ep.path}` : ep.path}
+                                        >
                                             {ep.path}
-                                        </span>
+                                        </button>
 
                                         <span className="text-xs text-zinc-500 font-mono truncate max-w-[200px]" title={ep.uriTemplate}>
                                             → {ep.uriTemplate}

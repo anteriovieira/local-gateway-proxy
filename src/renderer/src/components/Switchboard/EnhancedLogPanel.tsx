@@ -16,6 +16,8 @@ interface EnhancedLogPanelProps {
     apiLogs: ApiLogEntry[]
     onClearLogs: () => void
     onOpenTerminalLog: () => void
+    searchQuery?: string
+    onSearchQueryChange?: (query: string) => void
 }
 
 type FilterType = {
@@ -28,13 +30,25 @@ type FilterType = {
 export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
     apiLogs,
     onClearLogs,
-    onOpenTerminalLog
+    onOpenTerminalLog,
+    searchQuery: externalSearchQuery,
+    onSearchQueryChange
 }) => {
     const [selectedLog, setSelectedLog] = useState<ApiLogEntry | null>(null)
-    const [searchQuery, setSearchQuery] = useState('')
+    const [internalSearchQuery, setInternalSearchQuery] = useState('')
     const [filters, setFilters] = useState<FilterType>({})
     const [showFilters, setShowFilters] = useState(false)
     const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+    // Use external search query if provided, otherwise use internal state
+    const searchQuery = externalSearchQuery !== undefined ? externalSearchQuery : internalSearchQuery
+    const setSearchQuery = (query: string) => {
+        if (onSearchQueryChange) {
+            onSearchQueryChange(query)
+        } else {
+            setInternalSearchQuery(query)
+        }
+    }
 
     // Group logs by date
     const groupedLogs = useMemo(() => {
@@ -204,11 +218,20 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                     <input
                         type="text"
-                        placeholder="Filter by resource ID"
+                        placeholder="Filter by path or resource ID"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-1 bg-zinc-900 border border-zinc-800 rounded-md text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-purple-500/50"
+                        className="w-full pl-10 pr-10 py-1 bg-zinc-900 border border-zinc-800 rounded-md text-sm text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-purple-500/50"
                     />
+                    {searchQuery && (
+                        <button
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 hover:bg-zinc-800 rounded transition-colors"
+                            title="Clear search"
+                        >
+                            <X className="w-3.5 h-3.5 text-zinc-500 hover:text-zinc-300" />
+                        </button>
+                    )}
                 </div>
 
                 {/* Filter Pills */}
