@@ -8,6 +8,7 @@ const cors = require('cors')
 const httpProxy = require('http-proxy')
 const zlib = require('zlib')
 const { Buffer } = require('buffer')
+const { PassThrough, Readable } = require('stream')
 
 const proxy = httpProxy.createProxyServer({})
 
@@ -82,7 +83,7 @@ export class ServerManager {
             const app = express()
             app.use(cors())
             // Don't use bodyParser.json() globally as it consumes the stream
-            // We'll buffer the body manually for logging without consuming the stream
+            // We'll buffer the body manually for logging in the route handlers
 
             // Helper to replace variables
             const resolveUrl = (template: string, params: Record<string, string>) => {
@@ -202,6 +203,35 @@ export class ServerManager {
                             const userAgent = req.get('user-agent') || 'unknown'
                             const apiKey = req.get('authorization')?.replace(/^Bearer /, '') || req.get('x-api-key') || undefined
                             const idempotencyKey = req.get('idempotency-key') || req.get('x-idempotency-key') || undefined
+
+                            // Capture request body
+                            // Note: This approach collects chunks as they flow through the stream.
+                            // Both our listener and http-proxy should receive the data if both
+                            // listeners are attached before data starts flowing.
+                            let requestBody = ''
+                            const requestChunks: Buffer[] = []
+                            
+                            // Only capture body for methods that typically have bodies
+                            const hasBody = ['POST', 'PUT', 'PATCH'].includes(req.method)
+                            
+                            if (hasBody && req.readable) {
+                                // Collect chunks as they arrive
+                                req.on('data', (chunk: Buffer) => {
+                                    requestChunks.push(Buffer.from(chunk))
+                                })
+                                
+                                req.on('end', () => {
+                                    // Decode the captured body
+                                    if (requestChunks.length > 0) {
+                                        try {
+                                            const buffer = Buffer.concat(requestChunks)
+                                            requestBody = buffer.toString('utf8')
+                                        } catch (err: any) {
+                                            requestBody = `<unable to decode request body: ${err.message}>`
+                                        }
+                                    }
+                                })
+                            }
 
                             // Send log to renderer
                             sendLog(workspaceId, `${req.method} ${requestedPath} -> ${targetUrl}`, 'info', mainWindow)
@@ -363,7 +393,7 @@ export class ServerManager {
                                     apiKey: apiKey ? (apiKey.length > 20 ? apiKey.substring(0, 20) + '...' : apiKey) : undefined,
                                     idempotencyKey,
                                     responseBody: responseBody || undefined,
-                                    requestBody: undefined, // Request body logging disabled to avoid stream consumption issues
+                                    requestBody: requestBody || undefined,
                                     isBypass: false
                                 }, mainWindow)
                                 
