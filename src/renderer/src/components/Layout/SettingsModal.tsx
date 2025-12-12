@@ -36,7 +36,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ workspace, isOpen,
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
             <div 
-                className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-4xl h-[600px] overflow-hidden flex shadow-2xl"
+                className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-[90vw] max-h-[90vh] overflow-hidden flex shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Left Sidebar Navigation */}

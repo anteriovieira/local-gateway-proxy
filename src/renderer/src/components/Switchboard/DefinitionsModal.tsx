@@ -86,7 +86,7 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
             onClick={onClose}
         >
             <div
-                className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-6xl h-[700px] overflow-hidden flex flex-col shadow-2xl"
+                className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -121,9 +121,10 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
                                         backgroundColor: '#09090b',
                                         color: '#fafafa',
                                         outline: 'none',
+                                        minHeight: '100%',
                                     }}
-                                    textareaClassName="outline-none"
-                                    className="w-full block"
+                                    textareaClassName="outline-none h-full"
+                                    className="w-full block h-full"
                                     placeholder="Paste your gateway API configuration JSON here..."
                                 />
                             </div>

@@ -305,7 +305,7 @@ export const Home: React.FC<HomeProps> = ({ workspaces, activeWorkspaceId, onSel
             {workspaceToDelete && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={cancelDelete}>
                     <div 
-                        className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl"
+                        className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 max-w-[90vw] max-h-[90vh] w-full mx-4 shadow-2xl overflow-auto"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <h3 className="text-lg font-semibold text-white mb-2">Delete Workspace</h3>

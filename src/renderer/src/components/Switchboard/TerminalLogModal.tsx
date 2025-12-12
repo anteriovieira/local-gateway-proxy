@@ -23,7 +23,7 @@ export const TerminalLogModal: React.FC<TerminalLogModalProps> = ({
             onClick={onClose}
         >
             <div 
-                className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-6xl h-[80vh] overflow-hidden flex flex-col shadow-2xl"
+                className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}

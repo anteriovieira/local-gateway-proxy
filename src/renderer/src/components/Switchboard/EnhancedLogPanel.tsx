@@ -395,22 +395,14 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3">
                                         <span className="text-xs text-zinc-500 w-32">Status:</span>
-                                        {selectedLog.status === 'pending' ? (
-                                            <span className={cn(
-                                                "px-2 py-0.5 text-xs font-medium rounded border flex items-center gap-1.5",
-                                                getStatusColor(selectedLog.statusCode, selectedLog.status)
-                                            )}>
-                                                <RefreshCw className="w-3 h-3 animate-spin" />
-                                                Pending
-                                            </span>
-                                        ) : (
-                                            <span className={cn(
-                                                "px-2 py-0.5 text-xs font-medium rounded border",
-                                                getStatusColor(selectedLog.statusCode, selectedLog.status)
-                                            )}>
-                                                {selectedLog.statusCode || '?'} {selectedLog.statusCode && selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? 'OK' : ''}
-                                            </span>
-                                        )}
+                                        <span className="text-xs text-zinc-300">
+                                            {selectedLog.status === 'pending' 
+                                                ? 'Pending' 
+                                                : selectedLog.statusCode 
+                                                    ? `${selectedLog.statusCode} ${selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? 'OK' : ''}`
+                                                    : selectedLog.status || 'Unknown'
+                                            }
+                                        </span>
                                     </div>
 
                                     {selectedLog.id && (

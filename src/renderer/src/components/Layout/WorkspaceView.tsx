@@ -37,15 +37,15 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
                 {/* Panel 1: Switchboard */}
                 <ResizablePanel defaultSize={40} minSize={25}>
                     <div className="h-full flex flex-col border-r border-zinc-900 bg-zinc-900/20">
-                        <div className="p-3 border-b border-zinc-900 bg-zinc-900/30 text-xs font-medium text-zinc-400 uppercase tracking-wider flex justify-between items-center">
-                            <span>Endpoints</span>
-                            <div className="flex items-center gap-2">
-                                <span className="text-zinc-600">{workspace.endpoints.filter(e => e.enabled !== false).length} Active</span>
+                        <div className="flex flex-row justify-between items-center p-3 border-b border-zinc-900 bg-zinc-900/30 text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                            <span className="flex-shrink-0">Endpoints</span>
+                            <div className="flex flex-row items-center gap-2 flex-shrink-0">
+                                <span className="text-zinc-600 whitespace-nowrap">{workspace.endpoints.filter(e => e.enabled !== false).length} Active</span>
                                 {workspace.endpoints.length > 0 && (
                                     <button
                                         onClick={() => onToggleAllEndpoints(!allEndpointsEnabled)}
                                         className={cn(
-                                            "flex items-center gap-1 px-2 py-1 text-[10px] rounded transition-colors border",
+                                            "flex items-center gap-1 px-2 py-1 text-[10px] rounded transition-colors border whitespace-nowrap",
                                             allEndpointsEnabled
                                                 ? "bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20"
                                                 : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700"
@@ -58,8 +58,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
                                 )}
                                 <button
                                     onClick={() => setIsDefinitionsModalOpen(true)}
-                                    className="px-3 py-1 text-xs bg-zinc-900 hover:bg-zinc-700 border border-zinc-700 rounded-md text-zinc-300 flex items-center gap-1.5 transition-colors"
-                                    
+                                    className="px-3 py-1 text-xs bg-zinc-900 hover:bg-zinc-700 border border-zinc-700 rounded-md text-zinc-300 flex items-center gap-1.5 transition-colors whitespace-nowrap"
                                 >
                                     <Sliders className="w-3.5 h-3.5" />
                                     Definitions
