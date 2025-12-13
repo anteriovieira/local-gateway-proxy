@@ -143,6 +143,29 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
         }
     }, [filteredLogs, selectedLog])
 
+    // Update selectedLog when the corresponding entry in apiLogs is updated
+    useEffect(() => {
+        if (selectedLog?.id) {
+            const updatedLog = apiLogs.find(log => log.id === selectedLog.id)
+            if (updatedLog) {
+                // Only update if the log data has actually changed
+                const hasChanged = 
+                    updatedLog.status !== selectedLog.status ||
+                    updatedLog.statusCode !== selectedLog.statusCode ||
+                    updatedLog.statusMessage !== selectedLog.statusMessage ||
+                    updatedLog.duration !== selectedLog.duration ||
+                    updatedLog.responseBody !== selectedLog.responseBody ||
+                    updatedLog.requestBody !== selectedLog.requestBody
+                
+                if (hasChanged) {
+                    setSelectedLog(updatedLog)
+                }
+            }
+        }
+        // Only depend on apiLogs - selectedLog.id is captured in closure
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [apiLogs])
+
     const getStatusColor = (status: number | undefined, logStatus?: 'pending' | 'completed' | 'error') => {
         // Handle pending status
         if (logStatus === 'pending') {
@@ -354,7 +377,12 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                                         {formatTime(log.timestamp)}
                                                     </span>
                                                     {log.isBypass && (
-                                                        <SplitIcon className="w-3.5 h-3.5 absolute right-0 rotate-90 top-1/2 -translate-y-1/2 text-zinc-700 flex-shrink-0" />
+                                                        <span 
+                                                            className="absolute right-0 top-1/2 -translate-y-1/2 flex-shrink-0"
+                                                            title="Bypass request - routed to bypass URI"
+                                                        >
+                                                            <SplitIcon className="w-3.5 h-3.5 rotate-90 text-zinc-700" />
+                                                        </span>
                                                     )}
                                                 </div>
                                             </button>
@@ -483,7 +511,10 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                     {selectedLog.isBypass && (
                                         <div className="flex items-center gap-3">
                                             <span className="text-xs text-zinc-500 w-32">Bypass:</span>
-                                            <span className="text-xs text-yellow-400">Yes</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs text-zinc-400">Yes</span>
+                                                <SplitIcon className="w-3.5 h-3.5 text-zinc-600 rotate-90" />
+                                            </div>
                                         </div>
                                     )}
                                 </div>
