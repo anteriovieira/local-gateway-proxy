@@ -62,7 +62,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
             let groupKey: string
 
             if (logDate.toDateString() === today.toDateString()) {
-                groupKey = 'Requests'
+                groupKey = 'Today'
             } else if (logDate.toDateString() === yesterday.toDateString()) {
                 groupKey = 'Yesterday'
             } else {
@@ -149,14 +149,14 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
             const updatedLog = apiLogs.find(log => log.id === selectedLog.id)
             if (updatedLog) {
                 // Only update if the log data has actually changed
-                const hasChanged = 
+                const hasChanged =
                     updatedLog.status !== selectedLog.status ||
                     updatedLog.statusCode !== selectedLog.statusCode ||
                     updatedLog.statusMessage !== selectedLog.statusMessage ||
                     updatedLog.duration !== selectedLog.duration ||
                     updatedLog.responseBody !== selectedLog.responseBody ||
                     updatedLog.requestBody !== selectedLog.requestBody
-                
+
                 if (hasChanged) {
                     setSelectedLog(updatedLog)
                 }
@@ -171,7 +171,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
         if (logStatus === 'pending') {
             return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
         }
-        
+
         // Handle completed/error status with status code
         if (status === undefined) return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
         if (status >= 200 && status < 300) return 'bg-green-500/20 text-green-400 border-green-500/30'
@@ -316,6 +316,15 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                 {/* Left Panel - Log List */}
                 <ResizablePanel defaultSize={40} minSize={20}>
                     <div className="h-full overflow-y-auto border-r border-zinc-800 custom-scrollbar" ref={scrollContainerRef}>
+                        {/* Requests Header */}
+                        <div className="sticky top-0 z-10 px-4 py-3 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 flex items-center justify-between">
+                            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                                Requests
+                            </h3>
+                            <span className="text-xs text-zinc-500 font-mono">
+                                {filteredLogs.length} {filteredLogs.length === 1 ? 'request' : 'requests'}
+                            </span>
+                        </div>
                         {Object.entries(groupedLogs).map(([dateGroup, logs]) => {
                             const groupLogs = logs.filter(log =>
                                 filteredLogs.some(fl => fl.id === log.id)
@@ -324,20 +333,22 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
                             return (
                                 <div key={dateGroup} className="mb-4">
-                                    <div className="px-4 py-2 bg-zinc-900/80 border-b border-zinc-800 sticky top-0 flex gap-2 items-center justify-between">
-                                        <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                                            {dateGroup}
-                                        </h3>
-                                        {dateGroup === 'Today' && (
-                                            <div className="text-[10px] text-zinc-600 mt-1 flex items-center gap-2">
+                                    {Object.entries(groupedLogs).length > 1 && (
+                                        <div className="px-4 py-2 bg-zinc-900/80 border-b border-zinc-800 sticky top-0 flex gap-2 items-center justify-between">
+                                            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                                                {dateGroup}
+                                            </h3>
+                                            {dateGroup === 'Today' && (
+                                                <div className="text-[10px] text-zinc-600 mt-1 flex items-center gap-2">
 
-                                                <button className="text-purple-400 hover:text-purple-300 flex items-center gap-1">
-                                                    <RefreshCw className="w-3 h-3" />
-                                                    Reload
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
+                                                    <button className="text-purple-400 hover:text-purple-300 flex items-center gap-1">
+                                                        <RefreshCw className="w-3 h-3" />
+                                                        Reload
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                     <div className="space-y-0.5">
                                         {groupLogs.map(log => (
                                             <button
@@ -377,7 +388,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                                         {formatTime(log.timestamp)}
                                                     </span>
                                                     {log.isBypass && (
-                                                        <span 
+                                                        <span
                                                             className="absolute right-0 top-1/2 -translate-y-1/2 flex-shrink-0"
                                                             title="Bypass request - routed to bypass URI"
                                                         >
@@ -424,9 +435,9 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                     <div className="flex items-center gap-3">
                                         <span className="text-xs text-zinc-500 w-32">Status:</span>
                                         <span className="text-xs text-zinc-300">
-                                            {selectedLog.status === 'pending' 
-                                                ? 'Pending' 
-                                                : selectedLog.statusCode 
+                                            {selectedLog.status === 'pending'
+                                                ? 'Pending'
+                                                : selectedLog.statusCode
                                                     ? `${selectedLog.statusCode} ${selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? 'OK' : ''}`
                                                     : selectedLog.status || 'Unknown'
                                             }
@@ -486,7 +497,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                             <span className="text-xs text-zinc-500 w-32 min-w-32 whitespace-nowrap inline-block">User Agent:</span>
                                             <span className="text-xs text-zinc-300 font-mono break-all inline-block">
                                                 {selectedLog.userAgent}
-                                            </span> 
+                                            </span>
                                         </div>
                                     )}
 
@@ -532,7 +543,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                             />
                                         </div>
                                         <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
-                                            <pre 
+                                            <pre
                                                 className="text-xs font-mono whitespace-pre-wrap language-json"
                                                 dangerouslySetInnerHTML={{
                                                     __html: (() => {
@@ -570,7 +581,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                             />
                                         </div>
                                         <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
-                                            <pre 
+                                            <pre
                                                 className="text-xs font-mono whitespace-pre-wrap language-json"
                                                 dangerouslySetInnerHTML={{
                                                     __html: (() => {
