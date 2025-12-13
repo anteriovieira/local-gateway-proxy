@@ -3,8 +3,9 @@ import { ApiLogEntry } from '../../types'
 import {
     Search, X,
     RefreshCw, Trash2, Terminal,
-    ListRestart, ArrowRight,
-    SplitIcon
+    ListRestart,
+    SplitIcon,
+    LoaderCircleIcon
 } from 'lucide-react'
 import { CopyButton } from '../ui/CopyButton'
 import { highlight, languages } from 'prismjs'
@@ -367,7 +368,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                                             "px-2 py-0.5 text-[10px] font-medium rounded border flex items-center gap-1",
                                                             getStatusColor(log.statusCode, log.status)
                                                         )}>
-                                                            <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                                                            <LoaderCircleIcon className="w-2.5 h-2.5 animate-spin" />
                                                             Pending
                                                         </span>
                                                     ) : (
