@@ -444,6 +444,7 @@ function App() {
                 onToggleServer={currentView === 'workspace' && activeWorkspace ? () => toggleServer(activeWorkspace.id) : undefined}
                 onUpdateWorkspace={currentView === 'workspace' && activeWorkspace ? (u) => updateWorkspace(activeWorkspace.id, u) : undefined}
                 onSettings={() => setIsSettingsOpen(true)}
+                onAddWorkspace={addNewWorkspace}
             />
             
             {/* Main Content */}

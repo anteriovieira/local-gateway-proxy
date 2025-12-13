@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { ChevronsUpDownIcon, Play, Square, Settings } from 'lucide-react'
+import { ChevronsUpDownIcon, Play, Square, Settings, Plus } from 'lucide-react'
 import { cn } from '../../utils'
 import { Workspace } from '../../types'
 
@@ -14,9 +14,10 @@ interface TopBarProps {
     onUpdateWorkspace?: (updates: Partial<Workspace>) => void
     onSearch?: () => void
     onSettings?: () => void
+    onAddWorkspace?: () => void
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ workspaces, activeWorkspaceId, workspaceName, workspace, onHome, onSelectWorkspace, onToggleServer, onUpdateWorkspace, onSearch, onSettings }) => {
+export const TopBar: React.FC<TopBarProps> = ({ workspaces, activeWorkspaceId, workspaceName, workspace, onHome, onSelectWorkspace, onToggleServer, onUpdateWorkspace, onSearch, onSettings, onAddWorkspace }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
     const buttonRef = useRef<HTMLButtonElement>(null)
@@ -120,6 +121,22 @@ export const TopBar: React.FC<TopBarProps> = ({ workspaces, activeWorkspaceId, w
                                                 )}
                                             </button>
                                         ))
+                                    )}
+                                    {/* Create New Workspace Button */}
+                                    {onAddWorkspace && (
+                                        <>
+                                            <div className="border-t border-zinc-800 my-2" />
+                                            <button
+                                                onClick={() => {
+                                                    onAddWorkspace()
+                                                    setIsDropdownOpen(false)
+                                                }}
+                                                className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-left transition-colors text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                                            >
+                                                <Plus className="w-4 h-4 text-zinc-400" />
+                                                <span className="font-medium">Create New Workspace</span>
+                                            </button>
+                                        </>
                                     )}
                                 </div>
                             </div>
