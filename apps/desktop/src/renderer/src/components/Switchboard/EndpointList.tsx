@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { EndpointDef } from '../../types'
-import { cn } from '../../utils'
+import { cn } from '@proxy-app/ui'
 import { resolveUriTemplateForDisplay } from '../../utils/resolveUrl'
 import { Check, Search } from 'lucide-react'
 

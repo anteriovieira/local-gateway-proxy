@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { X, Settings, Pencil, Link2 } from 'lucide-react'
 import { Workspace } from '../../types'
-import { cn } from '../../utils'
+import { cn } from '@proxy-app/ui'
 
 interface SettingsModalProps {
     workspace: Workspace | null

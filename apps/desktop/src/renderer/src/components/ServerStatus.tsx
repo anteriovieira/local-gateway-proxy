@@ -1,8 +1,5 @@
 import React from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, Badge, Button, ScrollArea } from "@proxy-app/ui"
 import { Play, Square, Terminal, Activity } from "lucide-react"
 
 interface ServerStatusProps {

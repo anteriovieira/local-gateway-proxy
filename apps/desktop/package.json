@@ -78,27 +78,16 @@
     "wait-on": "^9.0.3"
   },
   "dependencies": {
-    "@radix-ui/react-label": "^2.1.8",
-    "@radix-ui/react-scroll-area": "^1.2.10",
-    "@radix-ui/react-separator": "^1.1.8",
-    "@radix-ui/react-slot": "^1.2.4",
-    "@radix-ui/react-switch": "^1.2.6",
+    "@proxy-app/ui": "workspace:*",
     "@tanstack/react-virtual": "^3.13.13",
-    "@types/prismjs": "^1.26.5",
     "body-parser": "^2.2.1",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "express": "^5.2.1",
     "http-proxy-middleware": "^3.0.5",
     "lucide-react": "^0.556.0",
-    "prismjs": "^1.30.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
-    "react-resizable-panels": "^3.0.6",
-    "react-simple-code-editor": "^0.14.1",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7"
   }
 }

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Plus, Activity, GripVertical, Trash2, Play, Square, MoreVertical, Copy, FolderKanban } from 'lucide-react'
 import { Workspace } from '../../types'
-import { cn } from '../../utils'
+import { cn } from '@proxy-app/ui'
 
 interface HomeProps {
     workspaces: Workspace[]

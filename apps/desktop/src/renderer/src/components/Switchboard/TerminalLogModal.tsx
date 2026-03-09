@@ -2,7 +2,7 @@ import React from 'react'
 import { X } from 'lucide-react'
 import { LogEntry } from '../../types'
 import { Terminal } from './Terminal'
-import { cn } from '../../utils'
+import { cn } from '@proxy-app/ui'
 
 interface TerminalLogModalProps {
     isOpen: boolean
