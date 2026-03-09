@@ -1,14 +1,14 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { App, ProxyProvider, createElectronAdapter } from '@proxy-app/app'
+import { App, ProxyProvider, createChromeAdapter } from '@proxy-app/app'
 import './index.css'
 
-const adapter = createElectronAdapter()
+const adapter = createChromeAdapter()
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ProxyProvider adapter={adapter}>
-      <App nativeWindowDrag />
+      <App nativeWindowDrag={false} />
     </ProxyProvider>
   </React.StrictMode>
 )
