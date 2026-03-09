@@ -70,11 +70,26 @@ function sendApiLog(workspaceId: string, apiLog: {
     }
 }
 
+interface WorkspaceConfig {
+    workspaceId: string
+    port: number
+    endpoints: any[]
+    variables: Record<string, string>
+}
+
 export class ServerManager {
     private servers: Map<string, Server> = new Map()
+    private configs: Map<string, WorkspaceConfig> = new Map()
 
     getRunningServers(): string[] {
         return Array.from(this.servers.keys())
+    }
+
+    getConfigForExtension(port: number): WorkspaceConfig | null {
+        for (const config of Array.from(this.configs.values())) {
+            if (config.port === port) return config
+        }
+        return null
     }
 
     startServer(workspaceId: string, port: number, endpoints: any[], variables: Record<string, string>, bypassEnabled: boolean = false, bypassUri: string = '', mainWindow: BrowserWindow | null = null) {
@@ -87,6 +102,15 @@ export class ServerManager {
 
             const app = express()
             app.use(cors())
+            // Extension config endpoint - allows the browser extension to fetch workspace config
+            app.get('/_extension/config', (_req: Request, res: Response) => {
+                res.json({
+                    workspaceId,
+                    port,
+                    endpoints,
+                    variables
+                })
+            })
             // Don't use bodyParser.json() globally as it consumes the stream
             // We'll buffer the body manually for logging in the route handlers
 
@@ -799,6 +823,7 @@ export class ServerManager {
                 const message = `Proxy server listening on port ${port}`
                 sendLog(workspaceId, message, 'success', mainWindow)
                 this.servers.set(workspaceId, server)
+                this.configs.set(workspaceId, { workspaceId, port, endpoints, variables })
                 resolve()
             })
 
@@ -814,6 +839,7 @@ export class ServerManager {
             if (server) {
                 server.close(() => {
                     this.servers.delete(workspaceId)
+                    this.configs.delete(workspaceId)
                     sendLog(workspaceId, 'Server stopped', 'info', mainWindow)
                     resolve()
                 })
