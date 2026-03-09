@@ -4,8 +4,7 @@ import Editor from 'react-simple-code-editor'
 import { highlight, languages } from 'prismjs'
 import 'prismjs/components/prism-json'
 import { Workspace } from '../../types'
-import { cn } from '../../utils'
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui/resizable'
+import { cn, ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@proxy-app/ui'
 
 interface DefinitionsModalProps {
     workspace: Workspace | null

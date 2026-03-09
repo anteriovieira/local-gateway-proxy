@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react'
 import { LogEntry } from '../../types'
-import { cn } from '../../utils'
+import { cn } from '@proxy-app/ui'
 
 interface TerminalProps {
     logs: LogEntry[]

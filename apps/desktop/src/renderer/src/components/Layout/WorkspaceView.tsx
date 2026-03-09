@@ -5,8 +5,7 @@ import { EnhancedLogPanel } from '../Switchboard/EnhancedLogPanel'
 import { TerminalLogModal } from '../Switchboard/TerminalLogModal'
 import { DefinitionsModal } from '../Switchboard/DefinitionsModal'
 import { CheckSquare, Sliders } from 'lucide-react'
-import { cn } from '../../utils'
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui/resizable'
+import { cn, ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@proxy-app/ui'
 
 interface WorkspaceViewProps {
     workspace: Workspace

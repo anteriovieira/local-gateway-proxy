@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Plus, Activity, Network, GripVertical } from 'lucide-react'
 import { Workspace } from '../../types'
-import { cn } from '../../utils'
+import { cn } from '@proxy-app/ui'
 
 interface SidebarProps {
     workspaces: Workspace[]

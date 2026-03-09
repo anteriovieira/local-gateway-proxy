@@ -7,11 +7,9 @@ import {
     SplitIcon,
     LoaderCircleIcon
 } from 'lucide-react'
-import { CopyButton } from '../ui/CopyButton'
+import { CopyButton, ResizablePanelGroup, ResizablePanel, ResizableHandle, cn } from '@proxy-app/ui'
 import { highlight, languages } from 'prismjs'
 import 'prismjs/components/prism-json'
-import { cn } from '../../utils'
-import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '../ui/resizable'
 
 interface EnhancedLogPanelProps {
     apiLogs: ApiLogEntry[]

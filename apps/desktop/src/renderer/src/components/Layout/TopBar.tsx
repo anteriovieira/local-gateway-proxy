@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { ChevronsUpDownIcon, Play, Square, Settings, Plus } from 'lucide-react'
-import { cn } from '../../utils'
+import { cn } from '@proxy-app/ui'
 import { Workspace } from '../../types'
 
 interface TopBarProps {
