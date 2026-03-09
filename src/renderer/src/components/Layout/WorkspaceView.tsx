@@ -68,6 +68,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
                         <div className="flex-1 overflow-hidden p-4">
                             <EndpointList 
                                 endpoints={workspace.endpoints} 
+                                variables={workspace.variables}
                                 onToggle={onEndpointToggle}
                                 onEndpointClick={handleEndpointClick}
                             />

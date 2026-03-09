@@ -10,6 +10,37 @@
     "https"
   ],
   "paths": {
+    "/users/moderations": {
+      "get": {
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "200 response",
+            "schema": { "$ref": "#/definitions/Empty" },
+            "headers": { "Access-Control-Allow-Origin": { "type": "string" } }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "requestTemplates": {
+            "application/json": "{\"statusCode\": 200}"
+          },
+          "responses": {
+            "default": {
+              "statusCode": "200",
+              "responseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Content-Type": "'application/json'"
+              },
+              "responseTemplates": {
+                "application/json": "{\"data\":[{\"id\":\"3d1bc727-0668-4e8e-b134-07962f600c60\",\"user_id\":\"66cb801d-1aef-4385-9610-51f59e010e48\",\"moderation_type\":\"ban\",\"context_type\":\"platform\",\"context_id\":\"TMTTRT51CX\",\"status\":\"active\",\"reason\":\"User banned by moderator\",\"requester_id\":\"X2HHU10945\",\"until\":\"2027-10-31T15:50:29Z\",\"created_at\":\"2026-02-16T15:50:29Z\"},{\"id\":\"9c34e509-1fb0-4cdb-a483-4b7da4948533\",\"user_id\":\"66cb801d-1aef-4385-9610-51f59e010e48\",\"moderation_type\":\"ban\",\"context_type\":\"platform\",\"context_id\":\"TMTTRT51CX\",\"status\":\"active\",\"reason\":\"User banned by moderator\",\"requester_id\":\"4JQUH3FPA1\",\"until\":\"2027-11-18T13:26:24Z\",\"created_at\":\"2026-03-05T13:26:24Z\"},{\"id\":\"b08dcdd1-2784-4cee-8d70-4fa3d2f12660\",\"user_id\":\"66cb801d-1aef-4385-9610-51f59e010e48\",\"moderation_type\":\"ban\",\"context_type\":\"platform\",\"context_id\":\"TMTTRT51CX\",\"status\":\"active\",\"reason\":\"User banned by moderator\",\"requester_id\":\"X2HHU10945\",\"until\":\"2028-05-02T19:30:51Z\",\"created_at\":\"2026-03-03T19:30:51Z\"}],\"meta\":{\"total\":3,\"page\":0,\"count\":3,\"size\":100}}"
+              }
+            }
+          },
+          "passthroughBehavior": "when_no_match"
+        }
+      }
+    },
     "/content/topics": {
       "post": {
         "produces": [

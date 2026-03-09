@@ -1,10 +1,4 @@
-
-export interface EndpointDef {
-    path: string
-    method: string
-    uriTemplate: string
-    variableNames: string[]
-}
+import type { EndpointDef } from '../types'
 
 export interface GatewayConfig {
     endpoints: EndpointDef[]
@@ -39,10 +33,12 @@ export function parseGatewayConfig(
                     if (!details || typeof details !== 'object') continue
                     
                     const integration = details[propertyName]
-                    if (integration && 
-                        integration.type === 'http_proxy' && 
-                        integration.uri &&
-                        typeof integration.uri === 'string') {
+                    // Accept http_proxy or integrations with uri (AWS often omits type for simple proxy configs)
+                    // Exclude mock integrations (e.g. CORS preflight)
+                    const isProxy = integration?.uri && typeof integration.uri === 'string' &&
+                        (integration?.type === 'http_proxy' || integration?.type === 'http' || integration?.type === undefined) &&
+                        integration?.type !== 'mock'
+                    if (integration && isProxy) {
                         
                         const uriTemplate = integration.uri
                         // Use matchAll more efficiently
@@ -64,6 +60,24 @@ export function parseGatewayConfig(
                             uriTemplate,
                             variableNames: vars
                         })
+                    } else if (integration?.type === 'mock') {
+                        // Parse mock integration - extract response body from responseTemplates
+                        const responses = integration.responses
+                        const defaultResponse = responses?.default ?? responses?.['200']
+                        const responseTemplates = defaultResponse?.responseTemplates
+                        const mockBody = responseTemplates?.['application/json']
+                            ?? responseTemplates?.['*/*']
+                            ?? (typeof defaultResponse?.responseTemplates === 'string' ? defaultResponse.responseTemplates : null)
+                        if (typeof mockBody === 'string') {
+                            endpoints.push({
+                                path,
+                                method: method.toUpperCase(),
+                                uriTemplate: '(mock)',
+                                variableNames: [],
+                                isMock: true,
+                                mockResponse: mockBody
+                            })
+                        }
                     }
                 }
             }

@@ -109,7 +109,7 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
                                 <Code className="w-4 h-4 text-zinc-400" />
                                 <h3 className="text-sm font-semibold text-zinc-300">Spec</h3>
                             </div>
-                            <div className="flex-1 overflow-y-scroll custom-scrollbar">
+                            <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
                                 <Editor
                                     value={localWorkspace.configContent}
                                     onValueChange={handleConfigChange}
@@ -121,10 +121,11 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
                                         backgroundColor: '#09090b',
                                         color: '#fafafa',
                                         outline: 'none',
+                                        width: '100%',
                                         minHeight: '100%',
                                     }}
-                                    textareaClassName="outline-none h-full"
-                                    className="w-full block h-full"
+                                    textareaClassName="outline-none"
+                                    className="w-full block"
                                     placeholder="Paste your gateway API configuration JSON here..."
                                 />
                             </div>

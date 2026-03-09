@@ -2,10 +2,12 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { EndpointDef } from '../../types'
 import { cn } from '../../utils'
+import { resolveUriTemplateForDisplay } from '../../utils/resolveUrl'
 import { Check, Search } from 'lucide-react'
 
 interface EndpointListProps {
     endpoints: EndpointDef[]
+    variables?: Record<string, string>
     onToggle: (index: number) => void
     onEndpointClick?: (path: string) => void
 }
@@ -18,7 +20,7 @@ interface EndpointItem {
     originalIndex: number
 }
 
-export const EndpointList: React.FC<EndpointListProps> = ({ endpoints, onToggle, onEndpointClick }) => {
+export const EndpointList: React.FC<EndpointListProps> = ({ endpoints, variables = {}, onToggle, onEndpointClick }) => {
     const [searchQuery, setSearchQuery] = useState('')
     const [methodFilter, setMethodFilter] = useState<string>('ALL')
     const parentRef = useRef<HTMLDivElement>(null)
@@ -162,8 +164,8 @@ export const EndpointList: React.FC<EndpointListProps> = ({ endpoints, onToggle,
                                             {ep.path}
                                         </button>
 
-                                        <span className="text-xs text-zinc-500 font-mono truncate max-w-[200px]" title={ep.uriTemplate}>
-                                            → {ep.uriTemplate}
+                                        <span className="text-xs text-zinc-500 font-mono truncate max-w-[200px]" title={ep.isMock ? 'Mock response' : resolveUriTemplateForDisplay(ep.uriTemplate, variables)}>
+                                            → {ep.isMock ? '(mock)' : resolveUriTemplateForDisplay(ep.uriTemplate, variables)}
                                         </span>
                                     </div>
                                 </div>

@@ -4,6 +4,8 @@ export interface EndpointDef {
     uriTemplate: string
     variableNames?: string[]
     enabled?: boolean // New field for toggling
+    isMock?: boolean // When true, returns mockResponse instead of proxying
+    mockResponse?: string // JSON body for mock endpoints
 }
 
 export interface Workspace {

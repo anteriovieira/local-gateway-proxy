@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "dist/main/index.js",
   "scripts": {
-    "dev": "tsc -p tsconfig.node.json && concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "dev": "tsc -p tsconfig.node.json && concurrently \"vite\" \"wait-on tcp:5173 && electron . --dev\"",
     "build": "tsc -p tsconfig.node.json && vite build",
     "build:icons": "node scripts/generate-icons.js",
     "build:mac": "npm run build:icons && npm run build && electron-builder --mac",

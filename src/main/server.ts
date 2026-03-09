@@ -185,7 +185,7 @@ export class ServerManager {
                 return params
             }
 
-            // Register enabled endpoints (normal proxy behavior)
+            // Register enabled endpoints (normal proxy behavior + mock)
             endpoints.forEach((ep: any) => {
                 if (ep.enabled === false) return // Skip disabled endpoints for normal routing
                 
@@ -201,6 +201,43 @@ export class ServerManager {
                         
                         // Generate unique log ID for this request (outside try block for error handling)
                         const logId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+                        
+                        // Mock endpoint: return static response
+                        if (ep.isMock && ep.mockResponse) {
+                            const startTime = Date.now()
+                            try {
+                                const body = typeof ep.mockResponse === 'string' ? JSON.parse(ep.mockResponse) : ep.mockResponse
+                                res.setHeader('Content-Type', 'application/json')
+                                res.setHeader('Access-Control-Allow-Origin', '*')
+                                res.status(200).json(body)
+                                const duration = Date.now() - startTime
+                                const responseStr = JSON.stringify(body)
+                                sendApiLog(workspaceId, {
+                                    method: req.method,
+                                    path: requestedPath,
+                                    statusCode: 200,
+                                    status: 'completed',
+                                    targetUrl: '(mock)',
+                                    duration,
+                                    responseBody: responseStr,
+                                    isBypass: false,
+                                    timestamp: new Date().toISOString()
+                                }, mainWindow, logId, false)
+                                sendLog(workspaceId, `${req.method} ${requestedPath} -> (mock) 200`, 'success', mainWindow)
+                            } catch (err: any) {
+                                res.status(500).json({ error: 'Invalid mock response', message: err.message })
+                                sendApiLog(workspaceId, {
+                                    method: req.method,
+                                    path: requestedPath,
+                                    statusCode: 500,
+                                    status: 'error',
+                                    error: err.message,
+                                    isBypass: false,
+                                    timestamp: new Date().toISOString()
+                                }, mainWindow, logId, false)
+                            }
+                            return
+                        }
                         
                         try {
                             const startTime = Date.now()
@@ -464,7 +501,8 @@ export class ServerManager {
             })
 
             // Handle bypass for any route not handled by enabled endpoints
-            if (bypassEnabled && bypassUri) {
+            // Routes not in config (or disabled) are redirected to bypassUri when bypass is enabled
+            if (bypassEnabled) {
                 // Create a catch-all middleware that redirects any unmatched route to bypassUri
                 app.use((req: Request, res: Response, next: any) => {
                     // Check if this request matches any enabled endpoint
@@ -478,6 +516,13 @@ export class ServerManager {
 
                     // If it doesn't match an enabled endpoint, redirect to bypassUri
                     if (!matchesEnabledEndpoint) {
+                        if (!bypassUri || !bypassUri.trim()) {
+                            res.status(503).json({
+                                message: 'Bypass is enabled but no URI configured. Set the Bypass URI in Settings.',
+                                workspaceId
+                            })
+                            return
+                        }
                         // Capture the original requested path BEFORE modifying req.url
                         // Declare outside try block so it's accessible in catch block
                         const requestedPath = req.path
@@ -745,7 +790,7 @@ export class ServerManager {
                 })
             }
 
-            // Default 404 - only reached if bypass is disabled or bypassUri is not set
+            // Default 404 - only reached when bypass is disabled
             app.use((req: Request, res: Response) => {
                 res.status(404).json({ message: 'No route found in gateway config', workspaceId })
             })
