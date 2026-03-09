@@ -1,0 +1,11 @@
+{
+  "name": "@proxy-app/extension",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Extension dev not configured yet'",
+    "build": "echo 'Extension build not configured yet'",
+    "typecheck": "echo 'Extension typecheck not configured yet'",
+    "clean": "rm -rf dist"
+  }
+}
