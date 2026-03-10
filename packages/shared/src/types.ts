@@ -16,6 +16,8 @@ export interface Workspace {
     endpoints: EndpointDef[]
     variables: Record<string, string>
     isRunning: boolean
+    /** ISO timestamp when server was last started (for duration calculation) */
+    startedAt?: string
     logs: LogEntry[]
     apiLogs: ApiLogEntry[]
     integrationProperty?: string
@@ -23,6 +25,8 @@ export interface Workspace {
     bypassUri?: string
     /** Resource types to capture (extension only). Default: ['xmlhttprequest'] for API calls. */
     captureResourceTypes?: string[]
+    /** Incoming requests URL must contain this string to be captured (extension only). Empty = capture all. */
+    urlMustContain?: string
 }
 
 export interface LogEntry {

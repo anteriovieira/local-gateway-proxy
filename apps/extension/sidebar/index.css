@@ -40,11 +40,11 @@ body {
   background: #52525b;
 }
 
-/* Prism.js JSON syntax highlighting */
+/* Prism.js JSON syntax highlighting (less dark for softer appearance) */
 code[class*="language-"],
 pre[class*="language-"] {
   color: #fafafa;
-  background: #09090b;
+  background: #18181b;
   font-size: 0.75rem; /* text-xs - match app standard */
   line-height: 1.5;
 }

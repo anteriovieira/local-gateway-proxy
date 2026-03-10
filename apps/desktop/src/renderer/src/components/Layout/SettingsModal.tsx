@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { X, Settings, Pencil, Link2 } from 'lucide-react'
 import { Workspace } from '../../types'
-import { cn } from '@proxy-app/ui'
+import { cn, Tabs, TabsList, TabsTrigger, TabsContent } from '@proxy-app/ui'
 
 interface SettingsModalProps {
     workspace: Workspace | null
@@ -10,22 +10,13 @@ interface SettingsModalProps {
     onUpdate: (updates: Partial<Workspace>) => void
 }
 
-type TabType = 'general' | 'integration'
-
-interface TabItem {
-    id: TabType
-    label: string
-    icon: React.ReactNode
+const TAB_LABELS: Record<string, string> = {
+    general: 'General',
+    integration: 'Integration',
 }
 
-const tabs: TabItem[] = [
-    { id: 'general', label: 'General', icon: <Settings className="w-4 h-4" /> },
-    { id: 'integration', label: 'Integration', icon: <Link2 className="w-4 h-4" /> },
-]
-
-
 export const SettingsModal: React.FC<SettingsModalProps> = ({ workspace, isOpen, onClose, onUpdate }) => {
-    const [activeTab, setActiveTab] = useState<TabType>('general')
+    const [activeTab, setActiveTab] = useState('general')
     const [editingName, setEditingName] = useState(false)
     
     const integrationProperty = workspace?.integrationProperty || 'x-amazon-apigateway-integration'
@@ -39,53 +30,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ workspace, isOpen,
                 className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-[90vw] max-h-[90vh] overflow-hidden flex shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Left Sidebar Navigation */}
-                <div className="w-56 border-r border-zinc-800 bg-zinc-950/50 flex flex-col">
-                    <div className="px-6 py-2.5 border-b border-zinc-800">
-                        <h2 className="text-lg font-semibold text-white">Settings</h2>
+                <Tabs value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex flex-1 min-h-0">
+                    {/* Left Sidebar Navigation */}
+                    <div className="w-56 border-r border-zinc-800 bg-zinc-950/50 flex flex-col shrink-0">
+                        <div className="px-6 py-2.5 border-b border-zinc-800">
+                            <h2 className="text-lg font-semibold text-white">Settings</h2>
+                        </div>
+                        <TabsList variant="borderedVertical" className="w-full flex-1 justify-start mx-2 mt-2">
+                            <TabsTrigger value="general" variant="borderedVertical" className="w-full justify-start gap-3">
+                                <Settings className="w-4 h-4" />
+                                General
+                            </TabsTrigger>
+                            <TabsTrigger value="integration" variant="borderedVertical" className="w-full justify-start gap-3">
+                                <Link2 className="w-4 h-4" />
+                                Integration
+                            </TabsTrigger>
+                        </TabsList>
                     </div>
-                    <div className="flex-1 py-2">
-                        {tabs.map((tab) => (
+
+                    {/* Right Content Area */}
+                    <div className="flex-1 flex flex-col min-h-0">
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-2 border-b border-zinc-800 shrink-0">
+                            <h3 className="text-xl font-semibold text-white">
+                                {TAB_LABELS[activeTab] ?? 'General'}
+                            </h3>
                             <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={cn(
-                                    "w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors",
-                                    activeTab === tab.id
-                                        ? "bg-zinc-800 text-white"
-                                        : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-300"
-                                )}
+                                onClick={onClose}
+                                className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
                             >
-                                <span className={cn(
-                                    activeTab === tab.id ? "text-white" : "text-zinc-500"
-                                )}>
-                                    {tab.icon}
-                                </span>
-                                <span>{tab.label}</span>
+                                <X className="w-5 h-5" />
                             </button>
-                        ))}
-                    </div>
-                </div>
+                        </div>
 
-                {/* Right Content Area */}
-                <div className="flex-1 flex flex-col min-h-0">
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-6 py-2 border-b border-zinc-800">
-                        <h3 className="text-xl font-semibold text-white">
-                            {tabs.find(t => t.id === activeTab)?.label}
-                        </h3>
-                        <button
-                            onClick={onClose}
-                            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 overflow-y-auto min-h-[500px]">
-                        <div className="px-6 py-4">
-                            {activeTab === 'general' && (
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto min-h-[500px]">
+                            <div className="px-6 py-4">
+                                <TabsContent value="general" className="mt-0">
                                 <div className="space-y-0">
                                     {/* Workspace Name */}
                                     <div className="flex items-center justify-between py-3 border-b border-zinc-800/50">
@@ -156,9 +137,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ workspace, isOpen,
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                                </TabsContent>
 
-                            {activeTab === 'integration' && (
+                                <TabsContent value="integration" className="mt-0">
                                 <div className="space-y-0">
                                     {/* Integration Property */}
                                     <div className="flex items-center justify-between py-3 border-b border-zinc-800/50">
@@ -230,10 +211,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ workspace, isOpen,
                                         </div>
                                     </div>
                                 </div>
-                            )}
+                                </TabsContent>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </Tabs>
             </div>
         </div>
     )

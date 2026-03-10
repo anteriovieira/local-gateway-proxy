@@ -12,7 +12,7 @@ interface JsonEditorProps {
 
 export const JsonEditor: React.FC<JsonEditorProps> = ({ value, onChange, placeholder }) => {
     return (
-        <div className="h-full overflow-auto custom-scrollbar bg-zinc-950">
+        <div className="h-full overflow-auto custom-scrollbar bg-zinc-900/80">
             <Editor
                 value={value}
                 onValueChange={onChange}

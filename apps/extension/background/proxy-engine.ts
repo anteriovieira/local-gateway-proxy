@@ -7,6 +7,8 @@ export interface ProxyState {
     variables: Record<string, string>
     isActive: boolean
     captureResourceTypes: string[]
+    /** If set, only capture requests whose URL contains this string. */
+    urlMustContain?: string
 }
 
 let currentState: ProxyState | null = null
@@ -46,7 +48,8 @@ export async function activateProxy(
     endpoints: EndpointDef[],
     variables: Record<string, string>,
     proxyBaseUrl?: string,
-    captureResourceTypes: string[] = ['xmlhttprequest']
+    captureResourceTypes: string[] = ['xmlhttprequest'],
+    urlMustContain?: string
 ): Promise<{ success: boolean; error?: string; ruleCount?: number }> {
     try {
         // Clear existing rules first
@@ -100,7 +103,8 @@ export async function activateProxy(
             endpoints,
             variables,
             isActive: true,
-            captureResourceTypes
+            captureResourceTypes,
+            urlMustContain: urlMustContain?.trim() || undefined
         }
 
         return { success: true, ruleCount: transform ? enabledEndpoints.length : enabledEndpoints.length }

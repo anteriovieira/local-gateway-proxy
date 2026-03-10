@@ -80,16 +80,32 @@
     @apply border-border;
   }
 
+  html,
+  body,
+  #root {
+    height: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  #root {
+    display: flex;
+    flex-direction: column;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* Prism.js JSON syntax highlighting - Dark theme */
+/* Prism.js JSON syntax highlighting - Dark theme (less dark for softer appearance) */
 code[class*="language-"],
 pre[class*="language-"] {
   color: #fafafa;
-  background: #09090b;
+  background: #18181b;
   text-shadow: none;
   font-size: 0.75rem; /* text-xs - match app standard */
   line-height: 1.5;
