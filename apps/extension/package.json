@@ -1,0 +1,37 @@
+{
+  "name": "@proxy-app/extension",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "extension dev --starting-url https://bignerve.com",
+    "build": "extension build",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@proxy-app/app": "workspace:*",
+    "@proxy-app/shared": "workspace:*",
+    "@proxy-app/ui": "workspace:*",
+    "@tanstack/react-virtual": "^3.13.13",
+    "lucide-react": "^0.556.0",
+    "prismjs": "^1.30.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "react-resizable-panels": "^3.0.6",
+    "sonner": "^2.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/chrome": "^0.0.287",
+    "@types/prismjs": "^1.26.5",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "extension": "^3.8.16",
+    "pngjs": "^7.0.0",
+    "postcss": "^8.5.6",
+    "postcss-loader": "^8.2.1",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
+  }
+}

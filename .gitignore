@@ -19,7 +19,15 @@ build/icons/*.ico
 # Electron
 out/
 app/
-packages/
+
+# Build outputs per workspace
+apps/*/dist/
+apps/*/node_modules/
+packages/*/dist/
+packages/*/node_modules/
+
+# Turborepo
+.turbo/
 
 # IDE
 .vscode/
