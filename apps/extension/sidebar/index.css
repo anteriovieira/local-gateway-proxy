@@ -22,6 +22,12 @@ body {
   min-height: 100vh;
 }
 
+/* Scrollbar styling - outside @layer so it's never purged in production */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #3f3f46 #18181b;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;

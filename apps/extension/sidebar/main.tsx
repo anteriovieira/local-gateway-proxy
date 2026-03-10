@@ -1,3 +1,4 @@
+import './fetch-interceptor.js'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { App, ProxyProvider, createChromeAdapter } from '@proxy-app/app'
