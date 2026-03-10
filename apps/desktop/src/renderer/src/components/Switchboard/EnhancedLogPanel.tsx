@@ -572,7 +572,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                                 />
                                             )}
                                         </div>
-                                        <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
+                                        <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-auto max-h-[320px] custom-scrollbar">
                                             {selectedLog.requestBody ? (
                                                 <pre
                                                     className="text-xs font-mono whitespace-pre-wrap language-json"
@@ -612,7 +612,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                                 />
                                             )}
                                         </div>
-                                        <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
+                                        <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-auto max-h-[320px] custom-scrollbar">
                                             {selectedLog.responseBody ? (
                                                 <pre
                                                     className="text-xs font-mono whitespace-pre-wrap language-json"
