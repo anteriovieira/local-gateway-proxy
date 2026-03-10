@@ -11,4 +11,5 @@ export { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "./resizabl
 export { ScrollArea, ScrollBar } from "./scroll-area"
 export { Separator } from "./separator"
 export { Switch } from "./switch"
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs"
 export { Textarea } from "./textarea"

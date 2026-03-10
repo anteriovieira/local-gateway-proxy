@@ -52,6 +52,9 @@ export function initRequestLogger(): void {
             const requestType = (details as { type?: string }).type ?? 'other'
             if (!types.includes(requestType)) return
 
+            const filter = state.urlMustContain?.trim()
+            if (filter && !details.url.toLowerCase().includes(filter.toLowerCase())) return
+
             const pathname = new URL(details.url).pathname
             const method = details.method || 'GET'
 
@@ -250,6 +253,13 @@ export function clearLogs(): void {
  * Add a log entry for a request proxied through the content script (no webRequest event).
  * Called from proxy-fetch when a request is successfully proxied.
  */
+function shouldCaptureByUrlFilter(requestUrl: string): boolean {
+    const state = getProxyState()
+    const filter = state?.urlMustContain?.trim()
+    if (!filter) return true
+    return requestUrl.toLowerCase().includes(filter.toLowerCase())
+}
+
 export function addProxyLog(entry: {
     requestUrl: string
     targetUrl: string
@@ -266,6 +276,7 @@ export function addProxyLog(entry: {
 }): void {
     const state = getProxyState()
     if (!state?.isActive) return
+    if (!shouldCaptureByUrlFilter(entry.requestUrl)) return
 
     const log: ApiLogEntry = {
         id: generateLogId(),

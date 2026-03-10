@@ -4,7 +4,7 @@ import Editor from 'react-simple-code-editor'
 import { highlight, languages } from 'prismjs'
 import 'prismjs/components/prism-json'
 import { Workspace } from '../../types'
-import { cn, ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@proxy-app/ui'
+import { cn, Tabs, TabsList, TabsTrigger, TabsContent } from '@proxy-app/ui'
 
 interface DefinitionsModalProps {
     workspace: Workspace | null
@@ -99,15 +99,21 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
                     </button>
                 </div>
 
-                {/* Two Column Content with Resizable Panels */}
-                <ResizablePanelGroup direction="horizontal" className="flex-1">
-                    {/* Left Column - Spec (Configuration) */}
-                    <ResizablePanel defaultSize={50} minSize={30}>
+                {/* Tabs: Spec and Variables */}
+                <Tabs defaultValue="spec" className="flex-1 flex flex-col min-h-0">
+                    <TabsList variant="bordered" className="w-full justify-start px-6 pt-2">
+                        <TabsTrigger value="spec" variant="bordered" className="gap-2">
+                            <Code className="w-4 h-4" />
+                            Spec
+                        </TabsTrigger>
+                        <TabsTrigger value="variables" variant="bordered" className="gap-2">
+                            <Variable className="w-4 h-4" />
+                            Variables
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="spec" className="flex-1 min-h-0 mt-0 overflow-hidden">
                         <div className="h-full flex flex-col bg-zinc-950/50">
-                            <div className="px-6 py-3 border-b border-zinc-800 shrink-0 flex items-center gap-2">
-                                <Code className="w-4 h-4 text-zinc-400" />
-                                <h3 className="text-sm font-semibold text-zinc-300">Spec</h3>
-                            </div>
                             <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
                                 <Editor
                                     value={localWorkspace.configContent}
@@ -129,42 +135,33 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
                                 />
                             </div>
                         </div>
-                    </ResizablePanel>
+                    </TabsContent>
 
-                    <ResizableHandle withHandle />
-
-                    {/* Right Column - Variables */}
-                    <ResizablePanel defaultSize={50} minSize={30}>
-                        <div className="h-full flex flex-col">
-                            <div className="px-6 py-3 border-b border-zinc-800 shrink-0 flex items-center gap-2">
-                                <Variable className="w-4 h-4 text-zinc-400" />
-                                <h3 className="text-sm font-semibold text-zinc-300">Variables</h3>
-                            </div>
-                            <div className="flex-1 overflow-y-scroll custom-scrollbar p-6">
-                                {Object.keys(localWorkspace.variables).length === 0 ? (
-                                    <div className="text-center py-12 text-zinc-500 text-sm">
-                                        No variables configured
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {Object.entries(localWorkspace.variables).map(([key, value]) => (
-                                            <div key={key} className="flex flex-col gap-2">
-                                                <label className="text-xs text-zinc-400 font-mono">{key}</label>
-                                                <input
-                                                    type="text"
-                                                    value={value}
-                                                    onChange={(e) => handleVariableChange(key, e.target.value)}
-                                                    className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-white font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 w-full"
-                                                    placeholder="Enter value..."
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                    <TabsContent value="variables" className="flex-1 min-h-0 mt-0 overflow-y-auto">
+                        <div className="p-6">
+                            {Object.keys(localWorkspace.variables).length === 0 ? (
+                                <div className="text-center py-12 text-zinc-500 text-sm">
+                                    No variables configured
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {Object.entries(localWorkspace.variables).map(([key, value]) => (
+                                        <div key={key} className="flex flex-col gap-2">
+                                            <label className="text-xs text-zinc-400 font-mono">{key}</label>
+                                            <input
+                                                type="text"
+                                                value={value}
+                                                onChange={(e) => handleVariableChange(key, e.target.value)}
+                                                className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-white font-mono focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 w-full"
+                                                placeholder="Enter value..."
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    </ResizablePanel>
-                </ResizablePanelGroup>
+                    </TabsContent>
+                </Tabs>
 
                 {/* Footer with Apply Button */}
                 <div className="flex items-center justify-end gap-3 px-6 py-3 border-t border-zinc-800 shrink-0 bg-zinc-950/50">

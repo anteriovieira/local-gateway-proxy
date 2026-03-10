@@ -49,12 +49,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleMessage(message: { type: string; payload?: unknown }): Promise<unknown> {
   switch (message.type) {
     case 'start-server': {
-      const { workspaceId, port, endpoints, variables, captureResourceTypes } = (message.payload || {}) as {
+      const { workspaceId, port, endpoints, variables, captureResourceTypes, urlMustContain } = (message.payload || {}) as {
         workspaceId: string
         port: number
         endpoints: unknown[]
         variables: Record<string, string>
         captureResourceTypes?: string[]
+        urlMustContain?: string
       }
       // Extension: activate proxy with redirect to backend URLs directly (no proxyBaseUrl)
       const result = await activateProxy(
@@ -62,7 +63,8 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
         endpoints as Parameters<typeof activateProxy>[1],
         variables,
         undefined,
-        captureResourceTypes ?? ['xmlhttprequest']
+        captureResourceTypes ?? ['xmlhttprequest'],
+        urlMustContain
       )
       if (result.success) {
         broadcastServerLog(
