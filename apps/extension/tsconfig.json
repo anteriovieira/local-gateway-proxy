@@ -15,10 +15,5 @@
       "@/*": ["./sidebar/*"]
     }
   },
-  "include": ["background", "sidebar", "types"],
-  "references": [
-    { "path": "../../packages/shared" },
-    { "path": "../../packages/ui" },
-    { "path": "../../packages/app" }
-  ]
+  "include": ["background", "sidebar", "types"]
 }
