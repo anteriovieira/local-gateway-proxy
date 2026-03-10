@@ -37,6 +37,14 @@ function sendLog(workspaceId: string, message: string, type: 'info' | 'error' | 
 
 // Helper function to send API logs to renderer
 // If logId and isUpdate are provided, it will update an existing log entry; otherwise creates a new one
+function normalizeHeaders(headers: Record<string, string | string[] | undefined>): Record<string, string> {
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(headers)) {
+        if (v !== undefined) out[k] = Array.isArray(v) ? v.join(', ') : v
+    }
+    return out
+}
+
 function sendApiLog(workspaceId: string, apiLog: {
     method: string
     path: string
@@ -56,6 +64,8 @@ function sendApiLog(workspaceId: string, apiLog: {
     isBypass?: boolean
     error?: string
     timestamp?: string
+    requestHeaders?: Record<string, string>
+    responseHeaders?: Record<string, string>
 }, mainWindow: BrowserWindow | null, logId?: string, isUpdate: boolean = false) {
     if (mainWindow && !mainWindow.isDestroyed()) {
         const finalId = logId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -291,7 +301,8 @@ export class ServerManager {
                                 apiKey: apiKey ? (apiKey.length > 20 ? apiKey.substring(0, 20) + '...' : apiKey) : undefined,
                                 idempotencyKey,
                                 isBypass: false,
-                                timestamp: new Date().toISOString()
+                                timestamp: new Date().toISOString(),
+                                requestHeaders: normalizeHeaders(req.headers as Record<string, string | string[] | undefined>),
                             }, mainWindow, logId, false) // false = create new entry
 
                             // Capture request body
@@ -340,6 +351,7 @@ export class ServerManager {
                             let responseChunks: Buffer[] = []
                             let statusCode = res.statusCode || 200
                             let contentEncoding = ''
+                            let responseHeaders: Record<string, string> = {}
 
                             // Helper function to decode response body
                             const decodeResponseBody = (chunks: Buffer[], encoding: string): string => {
@@ -408,6 +420,7 @@ export class ServerManager {
                             const proxyResHandler = (proxyRes: any) => {
                                 statusCode = proxyRes.statusCode || 200
                                 contentEncoding = (proxyRes.headers['content-encoding'] || res.getHeader('content-encoding') || '').toString().toLowerCase()
+                                responseHeaders = normalizeHeaders(proxyRes.headers || {})
                             }
 
                             proxy.once('proxyRes', proxyResHandler)
@@ -486,7 +499,9 @@ export class ServerManager {
                                     idempotencyKey,
                                     responseBody: responseBody || undefined,
                                     requestBody: requestBody || undefined,
-                                    isBypass: false
+                                    isBypass: false,
+                                    requestHeaders: normalizeHeaders(req.headers as Record<string, string | string[] | undefined>),
+                                    responseHeaders,
                                 }, mainWindow, logId, true) // true = update existing entry
                                 
                                 // Log response body for debugging (truncated if too long)
@@ -613,7 +628,8 @@ export class ServerManager {
                                 idempotencyKey,
                                 requestBody: requestBody || undefined,
                                 isBypass: true,
-                                timestamp: new Date().toISOString()
+                                timestamp: new Date().toISOString(),
+                                requestHeaders: normalizeHeaders(req.headers as Record<string, string | string[] | undefined>),
                             }, mainWindow, logId, false) // false = create new entry
 
                             // Send log to renderer
@@ -632,6 +648,7 @@ export class ServerManager {
                             let responseChunks: Buffer[] = []
                             let statusCode = res.statusCode || 200
                             let contentEncoding = ''
+                            let responseHeaders: Record<string, string> = {}
 
                             // Helper function to decode response body
                             const decodeResponseBody = (chunks: Buffer[], encoding: string): string => {
@@ -700,6 +717,7 @@ export class ServerManager {
                             const proxyResHandler = (proxyRes: any) => {
                                 statusCode = proxyRes.statusCode || 200
                                 contentEncoding = (proxyRes.headers['content-encoding'] || res.getHeader('content-encoding') || '').toString().toLowerCase()
+                                responseHeaders = normalizeHeaders(proxyRes.headers || {})
                             }
 
                             proxy.once('proxyRes', proxyResHandler)
@@ -778,7 +796,9 @@ export class ServerManager {
                                     idempotencyKey,
                                     responseBody: responseBody || undefined,
                                     requestBody: requestBody || undefined,
-                                    isBypass: true
+                                    isBypass: true,
+                                    requestHeaders: normalizeHeaders(req.headers as Record<string, string | string[] | undefined>),
+                                    responseHeaders,
                                 }, mainWindow, logId, true) // true = update existing entry
                                 
                                 // Log response body for debugging (truncated if too long)

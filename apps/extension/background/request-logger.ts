@@ -261,6 +261,8 @@ export function addProxyLog(entry: {
     error?: string
     responseBody?: string
     requestBody?: string
+    requestHeaders?: Record<string, string>
+    responseHeaders?: Record<string, string>
 }): void {
     const state = getProxyState()
     if (!state?.isActive) return
@@ -277,7 +279,9 @@ export function addProxyLog(entry: {
         duration: entry.duration,
         error: entry.error,
         responseBody: entry.responseBody,
-        requestBody: entry.requestBody
+        requestBody: entry.requestBody,
+        requestHeaders: entry.requestHeaders,
+        responseHeaders: entry.responseHeaders,
     }
     logs.push(log)
     broadcastLog(log, false)

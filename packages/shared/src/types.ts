@@ -52,4 +52,8 @@ export interface ApiLogEntry {
     requestBody?: string
     isBypass?: boolean
     error?: string
+    /** Request headers (key: value) */
+    requestHeaders?: Record<string, string>
+    /** Response headers (key: value) */
+    responseHeaders?: Record<string, string>
 }

@@ -110,6 +110,8 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
             duration,
             responseBody: responseBodyForLog,
             requestBody: requestBodyStr,
+            requestHeaders: payload.headers,
+            responseHeaders: responseHeaders,
         })
 
         return {

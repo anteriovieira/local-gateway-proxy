@@ -50,4 +50,6 @@ export interface ApiLogEntry {
     requestBody?: string
     isBypass?: boolean
     error?: string
+    requestHeaders?: Record<string, string>
+    responseHeaders?: Record<string, string>
 }
