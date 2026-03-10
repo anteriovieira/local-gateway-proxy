@@ -37,6 +37,8 @@ export interface ApiLogEntry {
     statusCode?: number // Optional since pending requests don't have a status code yet
     status?: 'pending' | 'completed' | 'error' // Request status
     statusMessage?: string
+    /** Original request URL (before proxy/redirect) */
+    requestUrl?: string
     targetUrl?: string
     duration?: number
     requestId?: string

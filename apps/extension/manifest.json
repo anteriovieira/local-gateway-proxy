@@ -3,10 +3,18 @@
   "name": "Proxy App",
   "version": "1.0.0",
   "description": "API proxy and request interceptor",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/response-capture.ts"],
+      "run_at": "document_start"
+    }
+  ],
   "permissions": [
     "sidePanel",
     "storage",
     "webRequest",
+    "scripting",
     "declarativeNetRequestWithHostAccess",
     "declarativeNetRequestFeedback",
     "activeTab",

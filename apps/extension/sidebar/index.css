@@ -45,6 +45,8 @@ code[class*="language-"],
 pre[class*="language-"] {
   color: #fafafa;
   background: #09090b;
+  font-size: 0.75rem; /* text-xs - match app standard */
+  line-height: 1.5;
 }
 
 .token.punctuation { color: #a1a1aa; }

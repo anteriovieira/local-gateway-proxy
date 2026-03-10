@@ -154,7 +154,10 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                     updatedLog.statusMessage !== selectedLog.statusMessage ||
                     updatedLog.duration !== selectedLog.duration ||
                     updatedLog.responseBody !== selectedLog.responseBody ||
-                    updatedLog.requestBody !== selectedLog.requestBody
+                    updatedLog.requestBody !== selectedLog.requestBody ||
+                    updatedLog.error !== selectedLog.error ||
+                    updatedLog.requestUrl !== selectedLog.requestUrl ||
+                    updatedLog.targetUrl !== selectedLog.targetUrl
 
                 if (hasChanged) {
                     setSelectedLog(updatedLog)
@@ -171,7 +174,12 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
             return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
         }
 
-        // Handle completed/error status with status code
+        // Handle error status
+        if (logStatus === 'error') {
+            return 'bg-red-500/20 text-red-400 border-red-500/30'
+        }
+
+        // Handle completed status with status code
         if (status === undefined) return 'bg-gray-500/20 text-gray-400 border-gray-500/30'
         if (status >= 200 && status < 300) return 'bg-green-500/20 text-green-400 border-green-500/30'
         if (status >= 400) return 'bg-red-500/20 text-red-400 border-red-500/30'
@@ -370,11 +378,14 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                                             Pending
                                                         </span>
                                                     ) : (
-                                                        <span className={cn(
-                                                            "px-2 py-0.5 text-[10px] font-medium rounded border",
-                                                            getStatusColor(log.statusCode, log.status)
-                                                        )}>
-                                                            {log.statusCode || '?'} {log.statusCode && log.statusCode >= 200 && log.statusCode < 300 ? 'OK' : ''}
+                                                        <span
+                                                            className={cn(
+                                                                "px-2 py-0.5 text-[10px] font-medium rounded border",
+                                                                getStatusColor(log.statusCode, log.status)
+                                                            )}
+                                                            title={log.status === 'error' && log.error ? log.error : undefined}
+                                                        >
+                                                            {log.status === 'error' ? 'Error' : log.statusCode || '?'} {log.statusCode && log.statusCode >= 200 && log.statusCode < 300 ? 'OK' : ''}
                                                         </span>
                                                     )}
                                                     <span className="text-xs font-mono text-zinc-300">
@@ -436,12 +447,21 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                         <span className="text-xs text-zinc-300">
                                             {selectedLog.status === 'pending'
                                                 ? 'Pending'
-                                                : selectedLog.statusCode
-                                                    ? `${selectedLog.statusCode} ${selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? 'OK' : ''}`
-                                                    : selectedLog.status || 'Unknown'
+                                                : selectedLog.status === 'error'
+                                                    ? `Error${selectedLog.error ? `: ${selectedLog.error}` : ''}`
+                                                    : selectedLog.statusCode
+                                                        ? `${selectedLog.statusCode} ${selectedLog.statusCode >= 200 && selectedLog.statusCode < 300 ? 'OK' : ''}`
+                                                        : selectedLog.status || 'Unknown'
                                             }
                                         </span>
                                     </div>
+
+                                    {selectedLog.status === 'error' && selectedLog.error && (
+                                        <div className="flex flex-col gap-1 p-3 rounded-md bg-red-500/10 border border-red-500/30">
+                                            <span className="text-xs font-medium text-red-400">Error details</span>
+                                            <span className="text-xs text-zinc-300 font-mono break-all">{selectedLog.error}</span>
+                                        </div>
+                                    )}
 
                                     {selectedLog.id && (
                                         <div className="flex items-center gap-3">
@@ -471,12 +491,32 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                         </div>
                                     )}
 
-                                    {selectedLog.targetUrl && (
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs text-zinc-500 w-32 min-w-32 whitespace-nowrap inline-block">Target URL:</span>
-                                            <span className="text-xs text-zinc-300 font-mono break-all inline-block">
-                                                {selectedLog.targetUrl}
-                                            </span>
+                                    {(selectedLog.requestUrl || selectedLog.targetUrl || selectedLog.isBypass) && (
+                                        <div className="flex flex-col gap-2 p-3 rounded-md bg-zinc-900/50 border border-zinc-800">
+                                            <div className="text-xs font-medium text-zinc-400">proxy / redirect</div>
+                                            {selectedLog.requestUrl && (
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="text-xs text-zinc-500">Original:</span>
+                                                    <span className="text-xs text-zinc-300 font-mono break-all">{selectedLog.requestUrl}</span>
+                                                </div>
+                                            )}
+                                            {selectedLog.isBypass ? (
+                                                <div className="flex items-center gap-2">
+                                                    <SplitIcon className="w-3.5 h-3.5 text-amber-500 rotate-90" />
+                                                    <span className="text-xs text-amber-400">Bypass request</span>
+                                                    {selectedLog.targetUrl && (
+                                                        <>
+                                                            <span className="text-xs text-zinc-500"> to </span>
+                                                            <span className="text-xs text-zinc-300 font-mono break-all">{selectedLog.targetUrl}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            ) : selectedLog.targetUrl ? (
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="text-xs text-zinc-500">Proxied to:</span>
+                                                    <span className="text-xs text-zinc-300 font-mono break-all">{selectedLog.targetUrl}</span>
+                                                </div>
+                                            ) : null}
                                         </div>
                                     )}
 
@@ -518,89 +558,84 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                         </div>
                                     )}
 
-                                    {selectedLog.isBypass && (
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-xs text-zinc-500 w-32">Bypass:</span>
-                                            <div className="flex items-center gap-1.5">
-                                                <span className="text-xs text-zinc-400">Yes</span>
-                                                <SplitIcon className="w-3.5 h-3.5 text-zinc-600 rotate-90" />
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
 
-                                {/* Response Body */}
-                                {selectedLog.responseBody && (
+                                {/* Request - show for completed/error logs */}
+                                {(selectedLog.status === 'completed' || selectedLog.status === 'error') && (
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between">
-                                            <h3 className="text-sm font-semibold text-zinc-300">
-                                                Response Body
-                                            </h3>
-                                            <CopyButton
-                                                text={selectedLog.responseBody || ''}
-                                                title="Copy response body"
-                                            />
+                                            <h3 className="text-sm font-semibold text-zinc-300">Request</h3>
+                                            {selectedLog.requestBody && (
+                                                <CopyButton
+                                                    text={selectedLog.requestBody}
+                                                    title="Copy request body"
+                                                />
+                                            )}
                                         </div>
                                         <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
-                                            <pre
-                                                className="text-xs font-mono whitespace-pre-wrap language-json"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: (() => {
-                                                        try {
-                                                            const parsed = JSON.parse(selectedLog.responseBody)
-                                                            const formatted = JSON.stringify(parsed, null, 2)
-                                                            return highlight(formatted, languages.json, 'json')
-                                                        } catch {
-                                                            // If not JSON, return as plain text (escape HTML)
-                                                            const escaped = selectedLog.responseBody
-                                                                .replace(/&/g, '&amp;')
-                                                                .replace(/</g, '&lt;')
-                                                                .replace(/>/g, '&gt;')
-                                                                .replace(/"/g, '&quot;')
-                                                                .replace(/'/g, '&#039;')
-                                                            return escaped
-                                                        }
-                                                    })()
-                                                }}
-                                            />
+                                            {selectedLog.requestBody ? (
+                                                <pre
+                                                    className="text-xs font-mono whitespace-pre-wrap language-json"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: (() => {
+                                                            try {
+                                                                const parsed = JSON.parse(selectedLog.requestBody!)
+                                                                return highlight(JSON.stringify(parsed, null, 2), languages.json, 'json')
+                                                            } catch {
+                                                                const escaped = selectedLog.requestBody!
+                                                                    .replace(/&/g, '&amp;')
+                                                                    .replace(/</g, '&lt;')
+                                                                    .replace(/>/g, '&gt;')
+                                                                    .replace(/"/g, '&quot;')
+                                                                    .replace(/'/g, '&#039;')
+                                                                return escaped
+                                                            }
+                                                        })()
+                                                    }}
+                                                />
+                                            ) : (
+                                                <p className="text-xs text-zinc-500 italic">No request body (GET requests typically have no body)</p>
+                                            )}
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Request Body */}
-                                {selectedLog.requestBody && (
+                                {/* Response - show for completed/error logs */}
+                                {(selectedLog.status === 'completed' || selectedLog.status === 'error') && (
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between">
-                                            <h3 className="text-sm font-semibold text-zinc-300">
-                                                Request Body
-                                            </h3>
-                                            <CopyButton
-                                                text={selectedLog.requestBody || ''}
-                                                title="Copy request body"
-                                            />
+                                            <h3 className="text-sm font-semibold text-zinc-300">Response</h3>
+                                            {selectedLog.responseBody && (
+                                                <CopyButton
+                                                    text={selectedLog.responseBody}
+                                                    title="Copy response body"
+                                                />
+                                            )}
                                         </div>
                                         <div className="bg-zinc-950 border border-zinc-800 rounded-md p-4 overflow-x-auto">
-                                            <pre
-                                                className="text-xs font-mono whitespace-pre-wrap language-json"
-                                                dangerouslySetInnerHTML={{
-                                                    __html: (() => {
-                                                        try {
-                                                            const parsed = JSON.parse(selectedLog.requestBody)
-                                                            const formatted = JSON.stringify(parsed, null, 2)
-                                                            return highlight(formatted, languages.json, 'json')
-                                                        } catch {
-                                                            // If not JSON, return as plain text (escape HTML)
-                                                            const escaped = selectedLog.requestBody
-                                                                .replace(/&/g, '&amp;')
-                                                                .replace(/</g, '&lt;')
-                                                                .replace(/>/g, '&gt;')
-                                                                .replace(/"/g, '&quot;')
-                                                                .replace(/'/g, '&#039;')
-                                                            return escaped
-                                                        }
-                                                    })()
-                                                }}
-                                            />
+                                            {selectedLog.responseBody ? (
+                                                <pre
+                                                    className="text-xs font-mono whitespace-pre-wrap language-json"
+                                                    dangerouslySetInnerHTML={{
+                                                        __html: (() => {
+                                                            try {
+                                                                const parsed = JSON.parse(selectedLog.responseBody)
+                                                                return highlight(JSON.stringify(parsed, null, 2), languages.json, 'json')
+                                                            } catch {
+                                                                const escaped = selectedLog.responseBody
+                                                                    .replace(/&/g, '&amp;')
+                                                                    .replace(/</g, '&lt;')
+                                                                    .replace(/>/g, '&gt;')
+                                                                    .replace(/"/g, '&quot;')
+                                                                    .replace(/'/g, '&#039;')
+                                                                return escaped
+                                                            }
+                                                        })()
+                                                    }}
+                                                />
+                                            ) : (
+                                                <p className="text-xs text-zinc-500 italic">No response body captured</p>
+                                            )}
                                         </div>
                                     </div>
                                 )}

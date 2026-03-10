@@ -21,6 +21,8 @@ export interface Workspace {
     integrationProperty?: string
     bypassEnabled?: boolean
     bypassUri?: string
+    /** Resource types to capture (extension only). Default: ['xmlhttprequest'] for API calls. */
+    captureResourceTypes?: string[]
 }
 
 export interface LogEntry {
@@ -37,6 +39,8 @@ export interface ApiLogEntry {
     statusCode?: number
     status?: 'pending' | 'completed' | 'error'
     statusMessage?: string
+    /** Original request URL (before proxy/redirect) */
+    requestUrl?: string
     targetUrl?: string
     duration?: number
     requestId?: string
