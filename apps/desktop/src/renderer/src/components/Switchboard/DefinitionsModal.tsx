@@ -116,7 +116,7 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
                                     padding={16}
                                     style={{
                                         fontFamily: '"Fira Code", "Fira Mono", "Consolas", "Monaco", monospace',
-                                        fontSize: 13,
+                                        fontSize: 12,
                                         backgroundColor: '#09090b',
                                         color: '#fafafa',
                                         outline: 'none',

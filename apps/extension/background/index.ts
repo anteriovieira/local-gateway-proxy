@@ -1,5 +1,8 @@
 import { activateProxy, deactivateProxy, getProxyState } from './proxy-engine'
-import { initRequestLogger, getLogs, clearLogs } from './request-logger'
+import { initRequestLogger, getLogs, clearLogs, updateLogWithResponseBody } from './request-logger'
+import { handleProxyFetch } from './proxy-fetch'
+import { injectFetchPatch } from './inject-fetch-patch'
+import { MAX_RESPONSE_BODY_SIZE, PROXY_APP_PREFIX } from './constants'
 
 initRequestLogger()
 
@@ -7,7 +10,38 @@ chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error)
 })
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'inject-fetch-patch') {
+    const tabId = sender.tab?.id
+    const prefix = (message.payload as { prefix?: string } | undefined)?.prefix ?? PROXY_APP_PREFIX
+    if (tabId != null) {
+      chrome.scripting
+        .executeScript({
+          target: { tabId },
+          world: 'MAIN',
+          func: injectFetchPatch,
+          args: [prefix, MAX_RESPONSE_BODY_SIZE],
+        })
+        .then(() => sendResponse({ ok: true }))
+        .catch((err) => sendResponse({ ok: false, error: String(err) }))
+    } else {
+      sendResponse({ ok: false, error: 'No tab' })
+    }
+    return true
+  }
+  if (message.type === 'response-body') {
+    const { pathname, method, body } = (message.payload || {}) as { pathname?: string; method?: string; body?: string }
+    if (pathname && method && body) {
+      updateLogWithResponseBody(pathname, method, body)
+    }
+    sendResponse({ ok: true })
+    return true
+  }
+  if (message.type === 'proxy-fetch') {
+    const payload = (message.payload || {}) as Parameters<typeof handleProxyFetch>[0]
+    handleProxyFetch(payload).then(sendResponse)
+    return true
+  }
   handleMessage(message).then(sendResponse)
   return true
 })
@@ -15,16 +49,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 async function handleMessage(message: { type: string; payload?: unknown }): Promise<unknown> {
   switch (message.type) {
     case 'start-server': {
-      const { workspaceId, port, endpoints, variables } = (message.payload || {}) as {
+      const { workspaceId, port, endpoints, variables, captureResourceTypes } = (message.payload || {}) as {
         workspaceId: string
         port: number
         endpoints: unknown[]
         variables: Record<string, string>
+        captureResourceTypes?: string[]
       }
       // Extension: activate proxy with redirect to backend URLs directly (no proxyBaseUrl)
-      const result = await activateProxy(workspaceId, endpoints as Parameters<typeof activateProxy>[1], variables)
+      const result = await activateProxy(
+        workspaceId,
+        endpoints as Parameters<typeof activateProxy>[1],
+        variables,
+        undefined,
+        captureResourceTypes ?? ['xmlhttprequest']
+      )
       if (result.success) {
-        broadcastServerLog(workspaceId, `Proxy activated with ${result.ruleCount ?? 0} redirect rules`, 'success')
+        broadcastServerLog(
+          workspaceId,
+          `Proxy activated (${result.ruleCount ?? 0} endpoints, content-script proxy)`,
+          'success'
+        )
       }
       return result
     }
@@ -39,22 +84,6 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
     case 'get-running-servers': {
       const state = getProxyState()
       return state?.isActive ? [state.workspaceId] : []
-    }
-
-    case 'activate-proxy': {
-      // Legacy: connect to desktop - no longer used (extension is standalone)
-      const { workspaceId, endpoints, variables, proxyBaseUrl } = (message.payload || {}) as {
-        workspaceId: string
-        endpoints: unknown[]
-        variables: Record<string, string>
-        proxyBaseUrl?: string
-      }
-      return activateProxy(workspaceId, endpoints as Parameters<typeof activateProxy>[1], variables, proxyBaseUrl)
-    }
-
-    case 'deactivate-proxy': {
-      await deactivateProxy()
-      return { success: true }
     }
 
     case 'get-proxy-status': {

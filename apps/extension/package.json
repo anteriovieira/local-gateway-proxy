@@ -2,8 +2,9 @@
   "name": "@proxy-app/extension",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "extension dev",
+    "dev": "extension dev --starting-url https://bignerve.com",
     "build": "extension build",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"

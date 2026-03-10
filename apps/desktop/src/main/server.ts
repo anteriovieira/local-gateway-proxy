@@ -43,6 +43,7 @@ function sendApiLog(workspaceId: string, apiLog: {
     statusCode?: number
     status?: 'pending' | 'completed' | 'error'
     statusMessage?: string
+    requestUrl?: string
     targetUrl?: string
     duration?: number
     requestId?: string
@@ -219,9 +220,10 @@ export class ServerManager {
 
                 if ((app as any)[method]) {
                     (app as any)[method](expressPath, (req: Request, res: Response) => {
-                        // Capture the original requested path BEFORE modifying req.url
+                        // Capture the original requested path and URL BEFORE modifying req.url
                         // Declare outside try block so it's accessible in catch block
                         const requestedPath = req.path
+                        const requestUrl = `${req.protocol}://${req.get('host') || 'localhost'}${req.originalUrl}`
                         
                         // Generate unique log ID for this request (outside try block for error handling)
                         const logId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -241,6 +243,7 @@ export class ServerManager {
                                     path: requestedPath,
                                     statusCode: 200,
                                     status: 'completed',
+                                    requestUrl,
                                     targetUrl: '(mock)',
                                     duration,
                                     responseBody: responseStr,
@@ -256,6 +259,7 @@ export class ServerManager {
                                     statusCode: 500,
                                     status: 'error',
                                     error: err.message,
+                                    requestUrl,
                                     isBypass: false,
                                     timestamp: new Date().toISOString()
                                 }, mainWindow, logId, false)
@@ -265,7 +269,9 @@ export class ServerManager {
                         
                         try {
                             const startTime = Date.now()
-                            const targetUrl = resolveUrl(ep.uriTemplate, req.params as Record<string, string>)
+                            const resolvedTarget = resolveUrl(ep.uriTemplate, req.params as Record<string, string>)
+                            const queryString = req.originalUrl.includes('?') ? req.originalUrl.substring(req.originalUrl.indexOf('?')) : ''
+                            const targetUrl = resolvedTarget + queryString
 
                             // Capture request details
                             const ipAddress = req.ip || req.socket.remoteAddress || 'unknown'
@@ -278,6 +284,7 @@ export class ServerManager {
                                 method: req.method,
                                 path: requestedPath,
                                 status: 'pending',
+                                requestUrl,
                                 targetUrl,
                                 ipAddress,
                                 userAgent,
@@ -470,6 +477,7 @@ export class ServerManager {
                                     statusCode,
                                     status: statusCode >= 200 && statusCode < 300 ? 'completed' : statusCode >= 400 ? 'error' : 'completed',
                                     statusMessage: res.statusMessage,
+                                    requestUrl,
                                     targetUrl,
                                     duration,
                                     ipAddress,
@@ -514,10 +522,11 @@ export class ServerManager {
                                 status: 'error',
                                 statusMessage: 'Internal Server Error',
                                 error: err.message,
+                                requestUrl,
                                 ipAddress,
                                 isBypass: false
                             }, mainWindow, logId, true) // true = update existing entry
-                            
+
                             res.status(500).json({ error: err.message })
                         }
                     })
@@ -547,9 +556,9 @@ export class ServerManager {
                             })
                             return
                         }
-                        // Capture the original requested path BEFORE modifying req.url
-                        // Declare outside try block so it's accessible in catch block
+                        // Capture the original requested path and URL BEFORE modifying req.url
                         const requestedPath = req.path
+                        const requestUrl = `${req.protocol}://${req.get('host') || 'localhost'}${req.originalUrl}`
                         
                         // Generate unique log ID for this request
                         const logId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -596,6 +605,7 @@ export class ServerManager {
                                 method: req.method,
                                 path: requestedPath,
                                 status: 'pending',
+                                requestUrl,
                                 targetUrl,
                                 ipAddress,
                                 userAgent,
@@ -759,6 +769,7 @@ export class ServerManager {
                                     statusCode,
                                     status: statusCode >= 200 && statusCode < 300 ? 'completed' : statusCode >= 400 ? 'error' : 'completed',
                                     statusMessage: res.statusMessage,
+                                    requestUrl,
                                     targetUrl,
                                     duration,
                                     ipAddress,
@@ -802,10 +813,11 @@ export class ServerManager {
                                 status: 'error',
                                 statusMessage: 'Internal Server Error',
                                 error: err.message,
+                                requestUrl,
                                 ipAddress,
                                 isBypass: true
                             }, mainWindow, logId, true) // true = update existing entry
-                            
+
                             res.status(500).json({ error: err.message })
                         }
                     } else {

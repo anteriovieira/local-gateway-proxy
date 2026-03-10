@@ -20,8 +20,10 @@ export function parseGatewayConfig(
 
         if (data.paths && typeof data.paths === 'object') {
             const paths = data.paths
+            const basePath = (data.basePath || '').replace(/\/$/, '') || ''
 
             for (const path in paths) {
+                const fullPath = basePath ? `${basePath}${path.startsWith('/') ? path : '/' + path}` : path
                 const methods = paths[path]
                 if (!methods || typeof methods !== 'object') continue
 
@@ -46,7 +48,7 @@ export function parseGatewayConfig(
                         }
 
                         endpoints.push({
-                            path,
+                            path: fullPath,
                             method: method.toUpperCase(),
                             uriTemplate,
                             variableNames: vars
@@ -60,7 +62,7 @@ export function parseGatewayConfig(
                             ?? (typeof defaultResponse?.responseTemplates === 'string' ? defaultResponse.responseTemplates : null)
                         if (typeof mockBody === 'string') {
                             endpoints.push({
-                                path,
+                                path: fullPath,
                                 method: method.toUpperCase(),
                                 uriTemplate: '(mock)',
                                 variableNames: [],

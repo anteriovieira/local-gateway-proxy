@@ -6,6 +6,7 @@ export interface ProxyState {
     endpoints: EndpointDef[]
     variables: Record<string, string>
     isActive: boolean
+    captureResourceTypes: string[]
 }
 
 let currentState: ProxyState | null = null
@@ -35,80 +36,74 @@ function parseProxyBaseUrl(proxyBaseUrl: string): { scheme: string; host: string
 }
 
 /**
- * Activate the proxy for a workspace. Converts enabled endpoints into
- * chrome.declarativeNetRequest redirect rules.
- * @param proxyBaseUrl - Optional. When set (e.g. "http://localhost:3000"), redirects to this base URL (desktop proxy).
- *                       When omitted, redirects directly to backend URLs from uriTemplate (extension standalone mode).
+ * Activate the proxy for a workspace.
+ * - When proxyBaseUrl is set: uses declarativeNetRequest to redirect to desktop proxy (localhost).
+ * - When proxyBaseUrl is omitted (standalone): uses content script fetch override to proxy through
+ *   the extension background (avoids CORS by making the request from extension context).
  */
 export async function activateProxy(
     workspaceId: string,
     endpoints: EndpointDef[],
     variables: Record<string, string>,
-    proxyBaseUrl?: string
+    proxyBaseUrl?: string,
+    captureResourceTypes: string[] = ['xmlhttprequest']
 ): Promise<{ success: boolean; error?: string; ruleCount?: number }> {
     try {
         // Clear existing rules first
         await clearAllRules()
 
         const enabledEndpoints = endpoints.filter(ep => ep.enabled !== false && !ep.isMock)
-        const rules: chrome.declarativeNetRequest.Rule[] = []
         const transform = proxyBaseUrl ? parseProxyBaseUrl(proxyBaseUrl) : null
 
-        for (const ep of enabledEndpoints) {
-            try {
-                // Convert API Gateway path pattern to URL filter pattern
-                // e.g., /users/{id} -> */users/*
-                const urlFilter = pathToUrlFilter(ep.path)
-
-                const redirect: chrome.declarativeNetRequest.RuleActionType.REDIRECT['redirect'] = transform
-                    ? { transform: { scheme: transform.scheme, host: transform.host, port: transform.port } }
-                    : { url: resolveUrl(ep.uriTemplate, variables) }
-
-                const rule: chrome.declarativeNetRequest.Rule = {
-                    id: ruleIdCounter++,
-                    priority: 1,
-                    action: {
-                        type: chrome.declarativeNetRequest.RuleActionType.REDIRECT,
-                        redirect
-                    },
-                    condition: {
-                        urlFilter,
-                        resourceTypes: [
-                            chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST,
-                            chrome.declarativeNetRequest.ResourceType.MAIN_FRAME,
-                            chrome.declarativeNetRequest.ResourceType.SUB_FRAME
-                        ]
+        // Only use declarativeNetRequest when redirecting to desktop proxy.
+        // In standalone mode, content script intercepts fetch and proxies through background.
+        if (transform) {
+            const rules: chrome.declarativeNetRequest.Rule[] = []
+            for (const ep of enabledEndpoints) {
+                try {
+                    const rule: chrome.declarativeNetRequest.Rule = {
+                        id: ruleIdCounter++,
+                        priority: 1,
+                        action: {
+                            type: chrome.declarativeNetRequest.RuleActionType.REDIRECT,
+                            redirect: { transform: { scheme: transform.scheme, host: transform.host, port: transform.port } }
+                        },
+                        condition: {
+                            urlFilter: pathToUrlFilter(ep.path),
+                            resourceTypes: captureResourceTypes.length > 0
+                                ? (captureResourceTypes as chrome.declarativeNetRequest.ResourceType[])
+                                : [chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST]
+                        }
                     }
+                    const method = ep.method.toUpperCase()
+                    if (method !== 'ANY' && method !== 'ALL') {
+                        rule.condition.requestMethods = [method.toLowerCase() as chrome.declarativeNetRequest.RequestMethod]
+                    }
+                    rules.push(rule)
+                } catch (err) {
+                    console.warn(`[proxy-engine] Skipping endpoint ${ep.method} ${ep.path}:`, err)
                 }
-
-                // Add method filter
-                const method = ep.method.toUpperCase()
-                if (method !== 'ANY' && method !== 'ALL') {
-                    rule.condition.requestMethods = [method.toLowerCase() as chrome.declarativeNetRequest.RequestMethod]
-                }
-
-                rules.push(rule)
-            } catch (err) {
-                console.warn(`[proxy-engine] Skipping endpoint ${ep.method} ${ep.path}:`, err)
             }
-        }
-
-        if (rules.length > 0) {
-            await chrome.declarativeNetRequest.updateDynamicRules({
-                addRules: rules,
-                removeRuleIds: []
-            })
+            if (rules.length > 0) {
+                await chrome.declarativeNetRequest.updateDynamicRules({
+                    addRules: rules,
+                    removeRuleIds: []
+                })
+            }
+            console.log(`[proxy-engine] Activated ${rules.length} redirect rules for workspace ${workspaceId}`)
+        } else {
+            console.log(`[proxy-engine] Activated content-script proxy for ${enabledEndpoints.length} endpoints (standalone mode)`)
         }
 
         currentState = {
             workspaceId,
             endpoints,
             variables,
-            isActive: true
+            isActive: true,
+            captureResourceTypes
         }
 
-        console.log(`[proxy-engine] Activated ${rules.length} redirect rules for workspace ${workspaceId}`)
-        return { success: true, ruleCount: rules.length }
+        return { success: true, ruleCount: transform ? enabledEndpoints.length : enabledEndpoints.length }
     } catch (err: any) {
         console.error('[proxy-engine] Failed to activate proxy:', err)
         return { success: false, error: err.message || 'Failed to activate proxy' }
