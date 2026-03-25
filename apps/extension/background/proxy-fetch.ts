@@ -1,7 +1,25 @@
 import { getProxyState, findMatchingEndpoint } from './proxy-engine'
-import { resolveUrl } from '@proxy-app/shared'
+import { resolveUrl, MockDatabase, handleMockDbEndpoint } from '@proxy-app/shared'
+import type { MockDbSnapshot } from '@proxy-app/shared'
 import { addProxyLog } from './request-logger'
 import { MAX_RESPONSE_BODY_SIZE } from './constants'
+
+// Singleton mock database instance for the active workspace
+let mockDb: MockDatabase | null = null
+
+export function getMockDb(): MockDatabase | null {
+    return mockDb
+}
+
+export function initMockDb(snapshot: MockDbSnapshot): MockDatabase {
+    mockDb = new MockDatabase()
+    mockDb.load(snapshot)
+    return mockDb
+}
+
+export function destroyMockDb(): void {
+    mockDb = null
+}
 
 export interface ProxyFetchRequest {
     url: string
@@ -54,7 +72,56 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
         return { proxied: false }
     }
 
-    // Handle mock endpoints — return mock response directly without proxying
+    // Handle mock-db endpoints — CRUD against in-memory collection
+    if (match.endpoint.isMock && match.endpoint.mockDbCollection && mockDb) {
+        const startTime = Date.now()
+        const delay = match.endpoint.mockDelay ?? 0
+        if (delay > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay))
+        }
+
+        let requestBody: Record<string, unknown> | null = null
+        if (payload.body != null) {
+            try {
+                const buf = payload.body instanceof ArrayBuffer
+                    ? payload.body
+                    : new Uint8Array(payload.body as number[]).buffer
+                requestBody = JSON.parse(new TextDecoder().decode(buf))
+            } catch {
+                requestBody = null
+            }
+        }
+
+        const result = handleMockDbEndpoint(mockDb, match.endpoint.mockDbCollection, payload.method, match.params, requestBody)
+        const duration = Date.now() - startTime
+        const bodyStr = JSON.stringify(result.body)
+        const body = Array.from(new TextEncoder().encode(bodyStr))
+
+        addProxyLog({
+            requestUrl: payload.url,
+            targetUrl: '(mock-db)',
+            method: payload.method,
+            path: pathname,
+            status: result.status >= 200 && result.status < 400 ? 'completed' : 'error',
+            statusCode: result.status,
+            duration,
+            responseBody: bodyStr,
+            requestBody: requestBody ? JSON.stringify(requestBody) : undefined,
+            requestHeaders: payload.headers,
+            responseHeaders: result.headers,
+            isMock: true,
+        })
+
+        return {
+            proxied: true,
+            status: result.status,
+            statusText: result.status === 200 ? 'OK' : result.status === 201 ? 'Created' : 'Mock DB',
+            headers: result.headers,
+            body,
+        }
+    }
+
+    // Handle mock endpoints with fixed response
     if (match.endpoint.isMock && match.endpoint.mockResponse != null) {
         const delay = match.endpoint.mockDelay ?? 0
         if (delay > 0) {

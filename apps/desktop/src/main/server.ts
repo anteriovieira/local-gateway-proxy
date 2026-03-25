@@ -1,6 +1,8 @@
 import { Server } from 'http'
 import type { Request, Response, Application } from 'express'
 import type { BrowserWindow } from 'electron'
+import { MockDatabase, handleMockDbEndpoint } from '@proxy-app/shared'
+import type { MockDbSnapshot } from '@proxy-app/shared'
 
 // Use require for CommonJS compatibility with Electron main process
 const express = require('express')
@@ -103,7 +105,7 @@ export class ServerManager {
         return null
     }
 
-    startServer(workspaceId: string, port: number, endpoints: any[], variables: Record<string, string>, bypassEnabled: boolean = false, bypassUri: string = '', mainWindow: BrowserWindow | null = null) {
+    startServer(workspaceId: string, port: number, endpoints: any[], variables: Record<string, string>, bypassEnabled: boolean = false, bypassUri: string = '', mainWindow: BrowserWindow | null = null, mockDbConfig?: { initialData: string }) {
         return new Promise<void>((resolve, reject) => {
             // Stop existing server for this workspace if any
             if (this.servers.has(workspaceId)) {
@@ -124,6 +126,19 @@ export class ServerManager {
             })
             // Don't use bodyParser.json() globally as it consumes the stream
             // We'll buffer the body manually for logging in the route handlers
+
+            // Initialize mock database if configured
+            let mockDb: MockDatabase | null = null
+            if (mockDbConfig?.initialData) {
+                try {
+                    const snapshot = JSON.parse(mockDbConfig.initialData) as MockDbSnapshot
+                    mockDb = new MockDatabase()
+                    mockDb.load(snapshot)
+                    sendLog(workspaceId, `Mock DB loaded (${mockDb.getCollectionNames().join(', ')})`, 'success', mainWindow)
+                } catch (err: any) {
+                    sendLog(workspaceId, `Failed to load mock DB: ${err.message}`, 'error', mainWindow)
+                }
+            }
 
             // Helper to replace variables
             const resolveUrl = (template: string, params: Record<string, string>) => {
@@ -238,6 +253,49 @@ export class ServerManager {
                         // Generate unique log ID for this request (outside try block for error handling)
                         const logId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
                         
+                        // Mock-db endpoint: CRUD against in-memory collection
+                        if (ep.isMock && ep.mockDbCollection && mockDb) {
+                            const startTime = Date.now()
+                            // Parse request body for POST/PUT/PATCH
+                            let bodyChunks: Buffer[] = []
+                            req.on('data', (chunk: Buffer) => bodyChunks.push(Buffer.from(chunk)))
+                            req.on('end', () => {
+                                let requestBody: Record<string, unknown> | null = null
+                                if (bodyChunks.length > 0) {
+                                    try {
+                                        requestBody = JSON.parse(Buffer.concat(bodyChunks).toString('utf8'))
+                                    } catch { /* ignore */ }
+                                }
+
+                                const result = handleMockDbEndpoint(mockDb!, ep.mockDbCollection, req.method, req.params as Record<string, string>, requestBody)
+                                const duration = Date.now() - startTime
+                                const responseStr = JSON.stringify(result.body)
+
+                                for (const [k, v] of Object.entries(result.headers)) {
+                                    res.setHeader(k, v)
+                                }
+                                res.status(result.status).json(result.body)
+
+                                sendApiLog(workspaceId, {
+                                    method: req.method,
+                                    path: requestedPath,
+                                    statusCode: result.status,
+                                    status: result.status < 400 ? 'completed' : 'error',
+                                    requestUrl,
+                                    targetUrl: '(mock-db)',
+                                    duration,
+                                    responseBody: responseStr,
+                                    requestBody: requestBody ? JSON.stringify(requestBody) : undefined,
+                                    isBypass: false,
+                                    timestamp: new Date().toISOString(),
+                                    requestHeaders: normalizeHeaders(req.headers as Record<string, string | string[] | undefined>),
+                                    responseHeaders: result.headers,
+                                }, mainWindow, logId, false)
+                                sendLog(workspaceId, `${req.method} ${requestedPath} -> (mock-db) ${result.status}`, 'success', mainWindow)
+                            })
+                            return
+                        }
+
                         // Mock endpoint: return static response
                         if (ep.isMock && ep.mockResponse) {
                             const startTime = Date.now()

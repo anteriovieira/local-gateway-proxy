@@ -49,7 +49,7 @@ export async function activateProxy(
     variables: Record<string, string>,
     proxyBaseUrl?: string,
     captureResourceTypes: string[] = ['xmlhttprequest'],
-    urlMustContain?: string
+    urlMustContain?: string,
 ): Promise<{ success: boolean; error?: string; ruleCount?: number }> {
     try {
         // Clear existing rules first
@@ -104,7 +104,7 @@ export async function activateProxy(
             variables,
             isActive: true,
             captureResourceTypes,
-            urlMustContain: urlMustContain?.trim() || undefined
+            urlMustContain: urlMustContain?.trim() || undefined,
         }
 
         return { success: true, ruleCount: transform ? enabledEndpoints.length : enabledEndpoints.length }

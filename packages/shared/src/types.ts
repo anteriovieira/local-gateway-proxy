@@ -9,6 +9,13 @@ export interface EndpointDef {
     mockStatusCode?: number
     mockHeaders?: Record<string, string>
     mockDelay?: number
+    /** When set, this endpoint uses the mock database CRUD engine for the named collection instead of a static response */
+    mockDbCollection?: string
+}
+
+export interface MockDbConfig {
+    /** Initial data as JSON string. Top-level keys are collection names, values are arrays. */
+    initialData: string
 }
 
 export interface Workspace {
@@ -30,6 +37,8 @@ export interface Workspace {
     captureResourceTypes?: string[]
     /** Incoming requests URL must contain this string to be captured (extension only). Empty = capture all. */
     urlMustContain?: string
+    /** Mock database configuration for CRUD simulation */
+    mockDbConfig?: MockDbConfig
 }
 
 export interface LogEntry {

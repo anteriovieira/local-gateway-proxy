@@ -1,8 +1,9 @@
 import { activateProxy, deactivateProxy, getProxyState, updateProxyEndpoints } from './proxy-engine'
 import { initRequestLogger, getLogs, clearLogs, updateLogWithResponseBody } from './request-logger'
-import { handleProxyFetch } from './proxy-fetch'
+import { handleProxyFetch, initMockDb, destroyMockDb, getMockDb } from './proxy-fetch'
 import { injectFetchPatch } from './inject-fetch-patch'
 import { MAX_RESPONSE_BODY_SIZE, PROXY_APP_PREFIX } from './constants'
+import type { MockDbSnapshot } from '@proxy-app/shared'
 
 initRequestLogger()
 
@@ -49,14 +50,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function handleMessage(message: { type: string; payload?: unknown }): Promise<unknown> {
   switch (message.type) {
     case 'start-server': {
-      const { workspaceId, port, endpoints, variables, captureResourceTypes, urlMustContain } = (message.payload || {}) as {
+      const { workspaceId, port, endpoints, variables, captureResourceTypes, urlMustContain, mockDbConfig } = (message.payload || {}) as {
         workspaceId: string
         port: number
         endpoints: unknown[]
         variables: Record<string, string>
         captureResourceTypes?: string[]
         urlMustContain?: string
+        mockDbConfig?: { initialData: string }
       }
+
+      // Initialize mock database if configured
+      if (mockDbConfig?.initialData) {
+        try {
+          const snapshot = JSON.parse(mockDbConfig.initialData) as MockDbSnapshot
+          initMockDb(snapshot)
+        } catch (err) {
+          console.warn('[background] Failed to parse mock-db initial data:', err)
+        }
+      } else {
+        destroyMockDb()
+      }
+
       // Extension: activate proxy with redirect to backend URLs directly (no proxyBaseUrl)
       const result = await activateProxy(
         workspaceId,
@@ -64,7 +79,7 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
         variables,
         undefined,
         captureResourceTypes ?? ['xmlhttprequest'],
-        urlMustContain
+        urlMustContain,
       )
       if (result.success) {
         broadcastServerLog(
@@ -79,6 +94,7 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
     case 'stop-server': {
       const { workspaceId } = (message.payload || {}) as { workspaceId: string }
       await deactivateProxy()
+      destroyMockDb()
       broadcastServerLog(workspaceId, 'Proxy deactivated', 'info')
       return { success: true }
     }
@@ -109,6 +125,22 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
       const { endpoints } = (message.payload || {}) as { endpoints: unknown[] }
       updateProxyEndpoints(endpoints as Parameters<typeof updateProxyEndpoints>[0])
       return { success: true }
+    }
+
+    case 'get-mock-db': {
+      const db = getMockDb()
+      return { data: db ? db.toSnapshot() : null }
+    }
+
+    case 'update-mock-db': {
+      const { initialData } = (message.payload || {}) as { initialData: string }
+      try {
+        const snapshot = JSON.parse(initialData) as MockDbSnapshot
+        initMockDb(snapshot)
+        return { success: true }
+      } catch (err: any) {
+        return { success: false, error: err.message }
+      }
     }
 
     default:

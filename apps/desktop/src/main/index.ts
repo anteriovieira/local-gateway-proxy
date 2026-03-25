@@ -89,10 +89,10 @@ export function sendLogToRenderer(workspaceId: string, message: string, type: 'i
 
 app.whenReady().then(() => {
     // IPC Handlers
-    ipcMain.handle('start-server', async (event, { workspaceId, port, endpoints, variables, bypassEnabled, bypassUri }) => {
+    ipcMain.handle('start-server', async (event, { workspaceId, port, endpoints, variables, bypassEnabled, bypassUri, mockDbConfig }) => {
         const { serverManager } = await import('./server')
         try {
-            await serverManager.startServer(workspaceId, port, endpoints, variables, bypassEnabled || false, bypassUri || '', mainWindow)
+            await serverManager.startServer(workspaceId, port, endpoints, variables, bypassEnabled || false, bypassUri || '', mainWindow, mockDbConfig)
             return { success: true }
         } catch (err: any) {
             return { success: false, error: err.message }
