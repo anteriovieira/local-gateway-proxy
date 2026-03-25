@@ -81,48 +81,133 @@ export function injectFetchPatch(PREFIX: string, MAX: number): void {
     const XHR = window.XMLHttpRequest
     const origOpen = XHR.prototype.open
     const origSend = XHR.prototype.send
+    const origSetRequestHeader = XHR.prototype.setRequestHeader
 
     XHR.prototype.open = function (method: string, url: string) {
-      ;(this as unknown as { __cu: string; __cm: string }).__cu = url
-      ;(this as unknown as { __cu: string; __cm: string }).__cm = (method || 'GET').toUpperCase()
-      return origOpen.apply(this, arguments as unknown as [string, string])
+      ;(this as unknown as { __cu: string; __cm: string; __xhrHeaders: Record<string, string> }).__cu = url
+      ;(this as unknown as { __cu: string; __cm: string; __xhrHeaders: Record<string, string> }).__cm = (method || 'GET').toUpperCase()
+      ;(this as unknown as { __cu: string; __cm: string; __xhrHeaders: Record<string, string> }).__xhrHeaders = {}
+      return origOpen.apply(this, arguments as unknown as [string, string, boolean])
+    }
+
+    XHR.prototype.setRequestHeader = function (name: string, value: string) {
+      const h = (this as unknown as { __xhrHeaders: Record<string, string> }).__xhrHeaders
+      if (h) h[name.toLowerCase()] = value
+      return origSetRequestHeader.call(this, name, value)
     }
 
     XHR.prototype.send = function (...args: unknown[]) {
       const x = this
       const u = (x as unknown as { __cu: string }).__cu
       const m = (x as unknown as { __cm: string }).__cm || 'GET'
-      function onLoad(this: XMLHttpRequest) {
-        try {
-          const t = this.responseText
-          if (t && t.length <= MAX) {
-            window.postMessage(
-              {
-                type: PREFIX + 'response-body',
-                payload: {
-                  url: this.responseURL || u,
-                  method: m,
-                  pathname: path(this.responseURL || u),
-                  body: t,
-                  timestamp: Date.now(),
-                },
-              },
-              '*'
-            )
+      const capturedHeaders: Record<string, string> = (x as unknown as { __xhrHeaders: Record<string, string> }).__xhrHeaders || {}
+
+      // Convert body to ArrayBuffer for transfer if possible
+      let bodyToSend: ArrayBuffer | null = null
+      const rawBody = args[0]
+      if (rawBody != null) {
+        if (rawBody instanceof ArrayBuffer) {
+          bodyToSend = rawBody
+        } else if (typeof rawBody === 'string') {
+          try { bodyToSend = new TextEncoder().encode(rawBody).buffer } catch { /* ignore */ }
+        }
+      }
+
+      const id = nextId++
+
+      pendingFetches[id] = (r: unknown) => {
+        const res = r as { proxied?: boolean; status?: number; statusText?: string; headers?: Record<string, string>; body?: ArrayBuffer }
+        if (res?.proxied && res.status !== undefined) {
+          // Inject proxied response into XHR without sending to the original URL
+          let responseText = ''
+          try {
+            if (res.body) responseText = new TextDecoder().decode(res.body)
+          } catch { /* ignore */ }
+
+          const status = res.status
+          const statusText = res.statusText || ''
+          const totalBytes = responseText.length
+
+          const def = (name: string, value: unknown) => {
+            Object.defineProperty(x, name, { get: () => value, configurable: true, enumerable: true })
           }
-        } catch {
-          // ignore
+          def('status', status)
+          def('statusText', statusText)
+          def('response', responseText)
+          def('responseText', responseText)
+          def('responseURL', u || '')
+
+          const headerStr = Object.entries(res.headers || {}).map(([k, v]) => `${k}: ${v}`).join('\r\n')
+          ;(x as unknown as { getAllResponseHeaders: () => string }).getAllResponseHeaders = () => headerStr
+
+          // Fire XHR state transitions asynchronously
+          Promise.resolve().then(() => {
+            def('readyState', 2)
+            x.dispatchEvent(new Event('readystatechange'))
+            def('readyState', 3)
+            x.dispatchEvent(new ProgressEvent('progress', { loaded: totalBytes, total: totalBytes, lengthComputable: true }))
+            x.dispatchEvent(new Event('readystatechange'))
+            def('readyState', 4)
+            x.dispatchEvent(new Event('readystatechange'))
+            x.dispatchEvent(new ProgressEvent('load', { loaded: totalBytes, total: totalBytes, lengthComputable: true }))
+            x.dispatchEvent(new ProgressEvent('loadend', { loaded: totalBytes, total: totalBytes, lengthComputable: true }))
+          })
+        } else {
+          // Not proxied — send original XHR and capture response body for logging
+          function onLoad(this: XMLHttpRequest) {
+            try {
+              const t = this.responseText
+              if (t && t.length <= MAX) {
+                window.postMessage(
+                  {
+                    type: PREFIX + 'response-body',
+                    payload: {
+                      url: this.responseURL || u,
+                      method: m,
+                      pathname: path(this.responseURL || u),
+                      body: t,
+                      timestamp: Date.now(),
+                    },
+                  },
+                  '*'
+                )
+              }
+            } catch {
+              // ignore
+            }
+          }
+          if (x.addEventListener) {
+            x.addEventListener('load', onLoad)
+          } else {
+            const old = x.onreadystatechange
+            x.onreadystatechange = function (this: XMLHttpRequest) {
+              if (this.readyState === 4) onLoad.call(this)
+              if (old) (old as () => void).apply(this)
+            }
+          }
+          origSend.call(x, args[0] as (Document | XMLHttpRequestBodyInit | null | undefined))
         }
       }
-      if (x.addEventListener) {
-        x.addEventListener('load', onLoad)
-      } else {
-        const old = x.onreadystatechange
-        x.onreadystatechange = function (this: XMLHttpRequest) {
-          if (this.readyState === 4) onLoad.call(this)
-          if (old) (old as () => void).apply(this)
+
+      window.postMessage({ type: PREFIX + 'fetch', id, url: u, method: m, headers: capturedHeaders, body: bodyToSend }, '*')
+      // Do NOT call origSend here — wait for proxy check response
+      // Fallback: if no response arrives within 30s, send original XHR
+      setTimeout(() => {
+        if (pendingFetches[id]) {
+          delete pendingFetches[id]
+          function onLoad(this: XMLHttpRequest) {
+            try {
+              const t = this.responseText
+              if (t && t.length <= MAX) {
+                window.postMessage({ type: PREFIX + 'response-body', payload: { url: this.responseURL || u, method: m, pathname: path(this.responseURL || u), body: t, timestamp: Date.now() } }, '*')
+              }
+            } catch { /* ignore */ }
+          }
+          if (x.addEventListener) {
+            x.addEventListener('load', onLoad)
+          }
+          origSend.call(x, args[0] as (Document | XMLHttpRequestBodyInit | null | undefined))
         }
-      }
-      return origSend.apply(this, args)
+      }, 30000)
     }
 }
