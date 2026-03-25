@@ -492,32 +492,34 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                                     )}
 
                                     {(selectedLog.requestUrl || selectedLog.targetUrl || selectedLog.isBypass) && (
-                                        <div className="flex flex-col gap-2 p-3 rounded-md bg-zinc-900/50 border border-zinc-800">
-                                            <div className="text-xs font-medium text-zinc-400">proxy / redirect</div>
-                                            {selectedLog.requestUrl && (
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className="text-xs text-zinc-500">Original:</span>
-                                                    <span className="text-xs text-zinc-300 font-mono break-all">{selectedLog.requestUrl}</span>
-                                                </div>
-                                            )}
-                                            {selectedLog.isBypass ? (
-                                                <div className="flex items-center gap-2">
-                                                    <SplitIcon className="w-3.5 h-3.5 text-amber-500 rotate-90" />
-                                                    <span className="text-xs text-amber-400">Bypass request</span>
-                                                    {selectedLog.targetUrl && (
-                                                        <>
-                                                            <span className="text-xs text-zinc-500"> to </span>
-                                                            <span className="text-xs text-zinc-300 font-mono break-all">{selectedLog.targetUrl}</span>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            ) : selectedLog.targetUrl ? (
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className="text-xs text-zinc-500">Proxied to:</span>
-                                                    <span className="text-xs text-zinc-300 font-mono break-all">{selectedLog.targetUrl}</span>
-                                                </div>
-                                            ) : null}
-                                        </div>
+                                        <>
+                                            <div className="text-xs font-medium text-zinc-400">Proxy</div>
+                                            <div className="flex flex-col gap-2 p-3 rounded-md bg-zinc-900/50 border border-zinc-800">
+                                                {selectedLog.requestUrl && (
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-xs text-zinc-500">Original:</span>
+                                                        <span className="text-xs text-zinc-300 font-mono break-all">{selectedLog.requestUrl}</span>
+                                                    </div>
+                                                )}
+                                                {selectedLog.isBypass ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <SplitIcon className="w-3.5 h-3.5 text-amber-500 rotate-90" />
+                                                        <span className="text-xs text-amber-400">Bypass request</span>
+                                                        {selectedLog.targetUrl && (
+                                                            <>
+                                                                <span className="text-xs text-zinc-500"> to </span>
+                                                                <span className="text-xs text-zinc-300 font-mono break-all">{selectedLog.targetUrl}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                ) : selectedLog.targetUrl ? (
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-xs text-zinc-500">Proxied to:</span>
+                                                        <span className="text-xs text-zinc-300 font-mono break-all">{selectedLog.targetUrl}</span>
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        </>
                                     )}
 
                                     {selectedLog.duration !== undefined && (
