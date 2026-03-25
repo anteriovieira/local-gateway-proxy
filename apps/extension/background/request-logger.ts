@@ -275,6 +275,7 @@ export function addProxyLog(entry: {
     requestBody?: string
     requestHeaders?: Record<string, string>
     responseHeaders?: Record<string, string>
+    isMock?: boolean
 }): void {
     const state = getProxyState()
     if (!state?.isActive) return
@@ -295,6 +296,7 @@ export function addProxyLog(entry: {
         requestBody: entry.requestBody,
         requestHeaders: entry.requestHeaders,
         responseHeaders: entry.responseHeaders,
+        isMock: entry.isMock,
     }
     logs.push(log)
     broadcastLog(log, false)

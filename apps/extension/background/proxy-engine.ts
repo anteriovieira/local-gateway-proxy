@@ -115,6 +115,15 @@ export async function activateProxy(
 }
 
 /**
+ * Update the endpoints in the current proxy state (live sync without restart).
+ */
+export function updateProxyEndpoints(endpoints: EndpointDef[]): void {
+    if (currentState) {
+        currentState.endpoints = endpoints
+    }
+}
+
+/**
  * Deactivate the proxy, removing all redirect rules.
  */
 export async function deactivateProxy(): Promise<void> {

@@ -15,7 +15,8 @@ export interface ProxyFetchResponse {
     status?: number
     statusText?: string
     headers?: Record<string, string>
-    body?: ArrayBuffer
+    /** Body as number[] for JSON-safe serialization through chrome.runtime.sendMessage */
+    body?: number[]
     error?: string
 }
 
@@ -53,6 +54,45 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
         return { proxied: false }
     }
 
+    // Handle mock endpoints — return mock response directly without proxying
+    if (match.endpoint.isMock && match.endpoint.mockResponse != null) {
+        const delay = match.endpoint.mockDelay ?? 0
+        if (delay > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay))
+        }
+
+        const statusCode = match.endpoint.mockStatusCode ?? 200
+        const responseHeaders: Record<string, string> = {
+            'content-type': 'application/json',
+            'access-control-allow-origin': '*',
+            'x-mock-response': 'true',
+            ...(match.endpoint.mockHeaders ?? {}),
+        }
+        const body = Array.from(new TextEncoder().encode(match.endpoint.mockResponse))
+
+        addProxyLog({
+            requestUrl: payload.url,
+            targetUrl: '(mock)',
+            method: payload.method,
+            path: pathname,
+            status: statusCode >= 200 && statusCode < 400 ? 'completed' : 'error',
+            statusCode,
+            duration: delay,
+            responseBody: match.endpoint.mockResponse,
+            requestHeaders: payload.headers,
+            responseHeaders,
+            isMock: true,
+        })
+
+        return {
+            proxied: true,
+            status: statusCode,
+            statusText: statusCode === 200 ? 'OK' : 'Mock Response',
+            headers: responseHeaders,
+            body,
+        }
+    }
+
     const startTime = Date.now()
     try {
         const targetUrl = resolveUrl(match.endpoint.uriTemplate, state.variables, match.params)
@@ -80,7 +120,8 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
         }
 
         const response = await fetch(urlWithQuery, fetchInit)
-        const body = await response.arrayBuffer()
+        const bodyBuf = await response.arrayBuffer()
+        const body = Array.from(new Uint8Array(bodyBuf))
         const duration = Date.now() - startTime
 
         const responseHeaders: Record<string, string> = {}
@@ -88,7 +129,7 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
             responseHeaders[key] = value
         })
 
-        const responseBodyStr = new TextDecoder().decode(body)
+        const responseBodyStr = new TextDecoder().decode(bodyBuf)
         const responseBodyForLog =
             responseBodyStr.length <= MAX_RESPONSE_BODY_SIZE
                 ? responseBodyStr
@@ -147,7 +188,7 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
             status: 500,
             statusText: 'Proxy Error',
             headers: { 'content-type': 'application/json' },
-            body: new TextEncoder().encode(JSON.stringify({ error })).buffer,
+            body: Array.from(new TextEncoder().encode(JSON.stringify({ error }))),
             error,
         }
     }

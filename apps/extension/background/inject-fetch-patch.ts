@@ -51,9 +51,10 @@ export function injectFetchPatch(PREFIX: string, MAX: number): void {
             }
           }, 30000)
         })
-        const res = r as { proxied?: boolean; status?: number; statusText?: string; headers?: Record<string, string>; body?: ArrayBuffer }
+        const res = r as { proxied?: boolean; status?: number; statusText?: string; headers?: Record<string, string>; body?: number[] }
         if (res?.proxied && res.status !== undefined) {
-          return new Response(res.body ?? null, {
+          const bodyBuf = Array.isArray(res.body) ? new Uint8Array(res.body).buffer : (res.body ?? null)
+          return new Response(bodyBuf, {
             status: res.status,
             statusText: res.statusText ?? '',
             headers: res.headers ?? {},
@@ -121,12 +122,15 @@ export function injectFetchPatch(PREFIX: string, MAX: number): void {
       const id = nextId++
 
       pendingFetches[id] = (r: unknown) => {
-        const res = r as { proxied?: boolean; status?: number; statusText?: string; headers?: Record<string, string>; body?: ArrayBuffer }
+        const res = r as { proxied?: boolean; status?: number; statusText?: string; headers?: Record<string, string>; body?: number[] }
         if (res?.proxied && res.status !== undefined) {
           // Inject proxied response into XHR without sending to the original URL
           let responseText = ''
           try {
-            if (res.body) responseText = new TextDecoder().decode(res.body)
+            if (res.body) {
+              const buf = Array.isArray(res.body) ? new Uint8Array(res.body) : res.body
+              responseText = new TextDecoder().decode(buf)
+            }
           } catch { /* ignore */ }
 
           const status = res.status

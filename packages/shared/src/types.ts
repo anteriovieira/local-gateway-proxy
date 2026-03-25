@@ -6,6 +6,9 @@ export interface EndpointDef {
     enabled?: boolean
     isMock?: boolean
     mockResponse?: string
+    mockStatusCode?: number
+    mockHeaders?: Record<string, string>
+    mockDelay?: number
 }
 
 export interface Workspace {
@@ -55,6 +58,7 @@ export interface ApiLogEntry {
     responseBody?: string
     requestBody?: string
     isBypass?: boolean
+    isMock?: boolean
     error?: string
     /** Request headers (key: value) */
     requestHeaders?: Record<string, string>

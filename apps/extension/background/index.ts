@@ -1,4 +1,4 @@
-import { activateProxy, deactivateProxy, getProxyState } from './proxy-engine'
+import { activateProxy, deactivateProxy, getProxyState, updateProxyEndpoints } from './proxy-engine'
 import { initRequestLogger, getLogs, clearLogs, updateLogWithResponseBody } from './request-logger'
 import { handleProxyFetch } from './proxy-fetch'
 import { injectFetchPatch } from './inject-fetch-patch'
@@ -102,6 +102,12 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
 
     case 'clear-logs': {
       clearLogs()
+      return { success: true }
+    }
+
+    case 'update-endpoints': {
+      const { endpoints } = (message.payload || {}) as { endpoints: unknown[] }
+      updateProxyEndpoints(endpoints as Parameters<typeof updateProxyEndpoints>[0])
       return { success: true }
     }
 
