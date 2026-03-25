@@ -13,6 +13,36 @@ export interface ProxyState {
 
 let currentState: ProxyState | null = null
 let ruleIdCounter = 1
+let stateLoaded = false
+
+const STORAGE_KEY = 'proxyState'
+
+/**
+ * Persist proxy state to chrome.storage.session so it survives service worker restarts.
+ */
+function persistState(): void {
+    if (currentState) {
+        chrome.storage.session.set({ [STORAGE_KEY]: currentState }).catch(() => {})
+    } else {
+        chrome.storage.session.remove(STORAGE_KEY).catch(() => {})
+    }
+}
+
+/**
+ * Restore proxy state from chrome.storage.session on service worker startup.
+ */
+export async function restoreProxyState(): Promise<void> {
+    if (stateLoaded) return
+    stateLoaded = true
+    try {
+        const result = await chrome.storage.session.get(STORAGE_KEY)
+        if (result[STORAGE_KEY]) {
+            currentState = result[STORAGE_KEY] as ProxyState
+        }
+    } catch {
+        // storage.session not available or empty
+    }
+}
 
 /**
  * Get the current proxy state
@@ -106,6 +136,7 @@ export async function activateProxy(
             captureResourceTypes,
             urlMustContain: urlMustContain?.trim() || undefined,
         }
+        persistState()
 
         return { success: true, ruleCount: transform ? enabledEndpoints.length : enabledEndpoints.length }
     } catch (err: any) {
@@ -120,6 +151,7 @@ export async function activateProxy(
 export function updateProxyEndpoints(endpoints: EndpointDef[]): void {
     if (currentState) {
         currentState.endpoints = endpoints
+        persistState()
     }
 }
 
@@ -132,6 +164,7 @@ export async function deactivateProxy(): Promise<void> {
         currentState.isActive = false
     }
     currentState = null
+    persistState()
     console.log('[proxy-engine] Proxy deactivated')
 }
 

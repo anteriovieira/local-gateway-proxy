@@ -7,6 +7,8 @@ import { MAX_RESPONSE_BODY_SIZE } from './constants'
 // Singleton mock database instance for the active workspace
 let mockDb: MockDatabase | null = null
 
+const MOCK_DB_STORAGE_KEY = 'mockDbSnapshot'
+
 export function getMockDb(): MockDatabase | null {
     return mockDb
 }
@@ -14,11 +16,30 @@ export function getMockDb(): MockDatabase | null {
 export function initMockDb(snapshot: MockDbSnapshot): MockDatabase {
     mockDb = new MockDatabase()
     mockDb.load(snapshot)
+    // Persist snapshot so it survives service worker restarts
+    chrome.storage.session.set({ [MOCK_DB_STORAGE_KEY]: snapshot }).catch(() => {})
     return mockDb
 }
 
 export function destroyMockDb(): void {
     mockDb = null
+    chrome.storage.session.remove(MOCK_DB_STORAGE_KEY).catch(() => {})
+}
+
+/**
+ * Restore mock database from chrome.storage.session on service worker startup.
+ */
+export async function restoreMockDb(): Promise<void> {
+    try {
+        const result = await chrome.storage.session.get(MOCK_DB_STORAGE_KEY)
+        const snapshot = result[MOCK_DB_STORAGE_KEY] as MockDbSnapshot | undefined
+        if (snapshot) {
+            mockDb = new MockDatabase()
+            mockDb.load(snapshot)
+        }
+    } catch {
+        // storage.session not available or empty
+    }
 }
 
 export interface ProxyFetchRequest {
@@ -93,6 +114,18 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
         }
 
         const result = handleMockDbEndpoint(mockDb, match.endpoint.mockDbCollection, payload.method, match.params, requestBody)
+
+        // Persist updated snapshot after write operations and broadcast to UI
+        const upperMethod = payload.method.toUpperCase()
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(upperMethod)) {
+            const snapshot = mockDb.toSnapshot()
+            chrome.storage.session.set({ [MOCK_DB_STORAGE_KEY]: snapshot }).catch(() => {})
+            chrome.runtime.sendMessage({
+                type: 'mock-db-updated',
+                payload: { snapshot },
+            }).catch(() => {})
+        }
+
         const duration = Date.now() - startTime
         const bodyStr = JSON.stringify(result.body)
         const body = Array.from(new TextEncoder().encode(bodyStr))

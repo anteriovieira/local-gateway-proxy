@@ -1,11 +1,14 @@
-import { activateProxy, deactivateProxy, getProxyState, updateProxyEndpoints } from './proxy-engine'
+import { activateProxy, deactivateProxy, getProxyState, updateProxyEndpoints, restoreProxyState } from './proxy-engine'
 import { initRequestLogger, getLogs, clearLogs, updateLogWithResponseBody } from './request-logger'
-import { handleProxyFetch, initMockDb, destroyMockDb, getMockDb } from './proxy-fetch'
+import { handleProxyFetch, initMockDb, destroyMockDb, getMockDb, restoreMockDb } from './proxy-fetch'
 import { injectFetchPatch } from './inject-fetch-patch'
 import { MAX_RESPONSE_BODY_SIZE, PROXY_APP_PREFIX } from './constants'
 import type { MockDbSnapshot } from '@proxy-app/shared'
 
 initRequestLogger()
+
+// Restore proxy state and mock database from session storage on service worker startup
+const stateReady = Promise.all([restoreProxyState(), restoreMockDb()])
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error)
@@ -40,7 +43,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.type === 'proxy-fetch') {
     const payload = (message.payload || {}) as Parameters<typeof handleProxyFetch>[0]
-    handleProxyFetch(payload).then(sendResponse)
+    stateReady.then(() => handleProxyFetch(payload)).then(sendResponse)
     return true
   }
   handleMessage(message).then(sendResponse)
@@ -134,6 +137,10 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
 
     case 'update-mock-db': {
       const { initialData } = (message.payload || {}) as { initialData: string }
+      if (!initialData) {
+        destroyMockDb()
+        return { success: true }
+      }
       try {
         const snapshot = JSON.parse(initialData) as MockDbSnapshot
         initMockDb(snapshot)
