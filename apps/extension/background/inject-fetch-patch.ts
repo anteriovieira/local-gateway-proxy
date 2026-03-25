@@ -4,6 +4,11 @@
  * PREFIX and MAX are passed as args (no closure) for serialization.
  */
 export function injectFetchPatch(PREFIX: string, MAX: number): void {
+    // Prevent double-patching when extension reloads while page is open
+    const guardKey = '__proxyApp_injected_' + PREFIX
+    if ((window as unknown as Record<string, boolean>)[guardKey]) return
+    ;(window as unknown as Record<string, boolean>)[guardKey] = true
+
     function path(u: string): string {
       try {
         return new URL(u).pathname

@@ -7,7 +7,7 @@ export interface ProxyFetchRequest {
     url: string
     method: string
     headers: Record<string, string>
-    body: ArrayBuffer | null
+    body: ArrayBuffer | number[] | null
 }
 
 export interface ProxyFetchResponse {
@@ -70,8 +70,13 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
             headers,
             credentials: 'omit',
         }
-        if (payload.body && ['POST', 'PUT', 'PATCH'].includes(payload.method.toUpperCase())) {
-            fetchInit.body = payload.body
+        if (payload.body != null && ['POST', 'PUT', 'PATCH'].includes(payload.method.toUpperCase())) {
+            // Reconstruct ArrayBuffer if it was serialized as number[] through chrome.runtime.sendMessage
+            if (payload.body instanceof ArrayBuffer) {
+                fetchInit.body = payload.body
+            } else if (Array.isArray(payload.body)) {
+                fetchInit.body = new Uint8Array(payload.body).buffer
+            }
         }
 
         const response = await fetch(urlWithQuery, fetchInit)
@@ -89,10 +94,13 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
                 ? responseBodyStr
                 : responseBodyStr.substring(0, MAX_RESPONSE_BODY_SIZE) + `\n\n... (truncated, total ${responseBodyStr.length} bytes)`
 
-        const requestBodyStr = payload.body
+        const requestBodyStr = payload.body != null
             ? (() => {
                   try {
-                      const s = new TextDecoder().decode(payload.body)
+                      const buf = payload.body instanceof ArrayBuffer
+                          ? payload.body
+                          : new Uint8Array(payload.body as number[]).buffer
+                      const s = new TextDecoder().decode(buf)
                       return s.length <= MAX_RESPONSE_BODY_SIZE ? s : s.substring(0, MAX_RESPONSE_BODY_SIZE) + `\n\n... (truncated)`
                   } catch {
                       return undefined

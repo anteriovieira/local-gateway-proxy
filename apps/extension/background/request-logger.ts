@@ -192,12 +192,14 @@ export function initRequestLogger(): void {
 function broadcastLog(log: ApiLogEntry, isUpdate: boolean): void {
     const state = getProxyState()
     const workspaceId = state?.workspaceId ?? ''
-    chrome.runtime.sendMessage({
-        type: 'api-log',
-        payload: { workspaceId, apiLog: log, isUpdate }
-    }).catch(() => {
-        // Side panel might not be open, ignore
-    })
+    try {
+        chrome.runtime.sendMessage({
+            type: 'api-log',
+            payload: { workspaceId, apiLog: log, isUpdate }
+        }).catch(() => {})
+    } catch {
+        // Extension context invalidated or side panel not open
+    }
 }
 
 /**

@@ -111,8 +111,12 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
 }
 
 function broadcastServerLog(workspaceId: string, message: string, type: 'info' | 'error' | 'success' = 'info') {
-  chrome.runtime.sendMessage({
-    type: 'server-log',
-    payload: { workspaceId, message, type, timestamp: new Date().toLocaleTimeString() },
-  }).catch(() => {})
+  try {
+    chrome.runtime.sendMessage({
+      type: 'server-log',
+      payload: { workspaceId, message, type, timestamp: new Date().toLocaleTimeString() },
+    }).catch(() => {})
+  } catch {
+    // Extension context invalidated or no receiver
+  }
 }

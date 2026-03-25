@@ -6,13 +6,22 @@
  */
 const PREFIX = '__proxy_app_'
 
+function safeSendMessage(message: unknown): Promise<unknown> {
+  try {
+    return chrome.runtime.sendMessage(message).catch(() => {})
+  } catch {
+    return Promise.resolve()
+  }
+}
+
 function main(): void {
   window.addEventListener('message', (e: MessageEvent) => {
     if (e.source !== window || !e.data?.type) return
     if (e.data.type === PREFIX + 'fetch') {
       const { id, url, method, headers, body } = e.data
-      chrome.runtime
-        .sendMessage({ type: 'proxy-fetch', payload: { url, method, headers, body } })
+      // Convert ArrayBuffer to number[] for reliable serialization via chrome.runtime.sendMessage
+      const bodyToSend = body instanceof ArrayBuffer ? Array.from(new Uint8Array(body)) : (body ?? null)
+      safeSendMessage({ type: 'proxy-fetch', payload: { url, method, headers, body: bodyToSend } })
         .then((result) => {
           window.postMessage({ type: PREFIX + 'fetch-result', id, result }, '*')
         })
@@ -22,14 +31,14 @@ function main(): void {
       return
     }
     if (e.data.type === PREFIX + 'response-body') {
-      chrome.runtime.sendMessage({ type: 'response-body', payload: e.data.payload }).catch(() => {})
+      safeSendMessage({ type: 'response-body', payload: e.data.payload })
     }
   })
 
   // Request background to inject into main world (bypasses CSP that blocks inline scripts)
-  chrome.runtime.sendMessage({ type: 'inject-fetch-patch', payload: { prefix: PREFIX } }).catch(() => {})
+  safeSendMessage({ type: 'inject-fetch-patch', payload: { prefix: PREFIX } })
 }
 
 // Run immediately on load; wrapper calls default export as "mount" - export no-op so it doesn't undo our patches
-const _ = main()
+main()
 export default () => {}
