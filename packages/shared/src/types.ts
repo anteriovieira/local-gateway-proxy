@@ -11,6 +11,8 @@ export interface EndpointDef {
     mockDelay?: number
     /** When set, this endpoint uses the mock database CRUD engine for the named collection instead of a static response */
     mockDbCollection?: string
+    /** Template for mock-db responses. Use {{data}} as placeholder for the DB result. Supports dot notation e.g. {{data.metadata}}. Defaults to '{{data}}' (pass-through). */
+    mockResponseTemplate?: string
 }
 
 export interface MockDbConfig {

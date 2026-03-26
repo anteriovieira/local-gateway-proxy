@@ -1,5 +1,5 @@
 import { getProxyState, findMatchingEndpoint } from './proxy-engine'
-import { resolveUrl, MockDatabase, handleMockDbEndpoint } from '@proxy-app/shared'
+import { resolveUrl, MockDatabase, handleMockDbEndpoint, applyResponseTemplate } from '@proxy-app/shared'
 import type { MockDbSnapshot } from '@proxy-app/shared'
 import { addProxyLog } from './request-logger'
 import { MAX_RESPONSE_BODY_SIZE } from './constants'
@@ -115,6 +115,11 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
 
         const result = handleMockDbEndpoint(mockDb, match.endpoint.mockDbCollection, payload.method, match.params, requestBody)
 
+        let finalBody = result.body
+        try {
+            finalBody = applyResponseTemplate(result.body, match.endpoint.mockResponseTemplate)
+        } catch { /* template produced invalid JSON — fall back to raw body */ }
+
         // Persist updated snapshot after write operations and broadcast to UI
         const upperMethod = payload.method.toUpperCase()
         if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(upperMethod)) {
@@ -127,7 +132,7 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
         }
 
         const duration = Date.now() - startTime
-        const bodyStr = JSON.stringify(result.body)
+        const bodyStr = JSON.stringify(finalBody)
         const body = Array.from(new TextEncoder().encode(bodyStr))
 
         addProxyLog({

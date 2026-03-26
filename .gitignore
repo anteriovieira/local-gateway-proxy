@@ -18,7 +18,6 @@ build/icons/*.ico
 
 # Electron
 out/
-app/
 
 # Build outputs per workspace
 apps/*/dist/

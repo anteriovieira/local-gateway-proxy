@@ -1,7 +1,7 @@
 import { Server } from 'http'
 import type { Request, Response, Application } from 'express'
 import type { BrowserWindow } from 'electron'
-import { MockDatabase, handleMockDbEndpoint } from '@proxy-app/shared'
+import { MockDatabase, handleMockDbEndpoint, applyResponseTemplate } from '@proxy-app/shared'
 import type { MockDbSnapshot } from '@proxy-app/shared'
 
 // Use require for CommonJS compatibility with Electron main process
@@ -268,13 +268,19 @@ export class ServerManager {
                                 }
 
                                 const result = handleMockDbEndpoint(mockDb!, ep.mockDbCollection, req.method, req.params as Record<string, string>, requestBody)
+
+                                let finalBody = result.body
+                                try {
+                                    finalBody = applyResponseTemplate(result.body, ep.mockResponseTemplate)
+                                } catch { /* template produced invalid JSON — fall back to raw body */ }
+
                                 const duration = Date.now() - startTime
-                                const responseStr = JSON.stringify(result.body)
+                                const responseStr = JSON.stringify(finalBody)
 
                                 for (const [k, v] of Object.entries(result.headers)) {
                                     res.setHeader(k, v)
                                 }
-                                res.status(result.status).json(result.body)
+                                res.status(result.status).json(finalBody)
 
                                 sendApiLog(workspaceId, {
                                     method: req.method,

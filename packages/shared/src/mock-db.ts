@@ -220,3 +220,31 @@ export function handleMockDbEndpoint(
 
     return { status: 405, body: { error: 'Method not allowed' }, headers }
 }
+
+/**
+ * Apply a response template to mock-db output.
+ *
+ * Replaces all `{{path}}` placeholders with the JSON-serialized value
+ * resolved via dot notation against `{ data: body }`.
+ *
+ * Examples:
+ *   - `{{data}}`              → pass-through (returns body as-is)
+ *   - `{"result": {{data}}}`  → wraps body in a property
+ *   - `{{data.metadata}}`     → extracts a nested property
+ *
+ * Throws if the final string is not valid JSON.
+ */
+export function applyResponseTemplate(body: unknown, template?: string): unknown {
+    if (!template || template.trim() === '{{data}}') {
+        return body
+    }
+    const context: Record<string, unknown> = { data: body }
+    const result = template.replace(/\{\{(.+?)\}\}/g, (_, path: string) => {
+        const value = path.trim().split('.').reduce<unknown>(
+            (acc, key) => (acc != null && typeof acc === 'object') ? (acc as Record<string, unknown>)[key] : undefined,
+            context
+        )
+        return JSON.stringify(value)
+    })
+    return JSON.parse(result)
+}
