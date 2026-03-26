@@ -156,6 +156,16 @@ export function updateProxyEndpoints(endpoints: EndpointDef[]): void {
 }
 
 /**
+ * Update the URL filter in the current proxy state (live sync without restart).
+ */
+export function updateProxyUrlFilter(urlMustContain?: string): void {
+    if (currentState) {
+        currentState.urlMustContain = urlMustContain?.trim() || undefined
+        persistState()
+    }
+}
+
+/**
  * Deactivate the proxy, removing all redirect rules.
  */
 export async function deactivateProxy(): Promise<void> {

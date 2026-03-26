@@ -1,4 +1,4 @@
-import { activateProxy, deactivateProxy, getProxyState, updateProxyEndpoints, restoreProxyState } from './proxy-engine'
+import { activateProxy, deactivateProxy, getProxyState, updateProxyEndpoints, updateProxyUrlFilter, restoreProxyState } from './proxy-engine'
 import { initRequestLogger, getLogs, clearLogs, updateLogWithResponseBody } from './request-logger'
 import { handleProxyFetch, initMockDb, destroyMockDb, getMockDb, restoreMockDb } from './proxy-fetch'
 import { injectFetchPatch } from './inject-fetch-patch'
@@ -127,6 +127,12 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
     case 'update-endpoints': {
       const { endpoints } = (message.payload || {}) as { endpoints: unknown[] }
       updateProxyEndpoints(endpoints as Parameters<typeof updateProxyEndpoints>[0])
+      return { success: true }
+    }
+
+    case 'update-url-filter': {
+      const { urlMustContain } = (message.payload || {}) as { urlMustContain?: string }
+      updateProxyUrlFilter(urlMustContain)
       return { success: true }
     }
 
