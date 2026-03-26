@@ -68,6 +68,14 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
     if (workspaces.length > 0) saveWorkspacesToStorage(workspaces)
   }, [workspaces])
 
+  // Sync badge count for extension
+  useEffect(() => {
+    if (variant === 'extension' && typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+      const runningCount = workspaces.filter((ws) => ws.isRunning).length
+      chrome.runtime.sendMessage({ type: 'update-badge', payload: { count: runningCount } }).catch(() => {})
+    }
+  }, [workspaces, variant])
+
   useEffect(() => {
     if (workspaces.length === 0) addNewWorkspace()
     const syncServerStatus = async () => {
@@ -114,12 +122,19 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
     })
     const unsubMockDb = adapter.onMockDbUpdate?.((snapshot) => {
       const newInitialData = JSON.stringify(snapshot, null, 2)
+      const collections = Object.keys(snapshot)
+      const totalItems = collections.reduce((sum, k) => sum + (Array.isArray(snapshot[k]) ? (snapshot[k] as unknown[]).length : 0), 0)
       setWorkspaces((prev) =>
         prev.map((ws) => {
           if (!ws.isRunning || !ws.mockDbConfig) return ws
           return { ...ws, mockDbConfig: { ...ws.mockDbConfig, initialData: newInitialData } }
         })
       )
+      setWorkspaces((prev) => {
+        const ws = prev.find((w) => w.isRunning && w.mockDbConfig)
+        if (ws) addLog(ws.id, `Mock DB synced: ${collections.length} collections, ${totalItems} items`, 'info')
+        return prev
+      })
     })
     return () => {
       unsubLog()
@@ -163,6 +178,15 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
     setCurrentView(view)
   }
 
+  const addLog = (workspaceId: string, message: string, type: 'info' | 'success' | 'error' = 'info') => {
+    setWorkspaces((prev) =>
+      prev.map((ws) => {
+        if (ws.id !== workspaceId) return ws
+        return { ...ws, logs: [...ws.logs, { timestamp: new Date().toLocaleTimeString(), message, type }] }
+      })
+    )
+  }
+
   const updateWorkspace = (id: string, updates: Partial<Workspace>) => {
     setWorkspaces((prev) =>
       prev.map((ws) => {
@@ -179,8 +203,10 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
               newVariables[v] = ws.variables[v] || ''
             })
             const newEndpoints = parsed.endpoints.map((e) => ({ ...e, enabled: true }))
+            setTimeout(() => addLog(id, `Spec parsed: ${newEndpoints.length} endpoints, ${parsed.variables.length} variables`, 'info'), 0)
             return { ...ws, ...updates, endpoints: newEndpoints, variables: newVariables }
           } catch {
+            setTimeout(() => addLog(id, 'Spec parse failed', 'error'), 0)
             return { ...ws, ...updates }
           }
         }
@@ -205,14 +231,18 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
     }
 
     // Sync mock database config to background if workspace is running
-    if (updates.mockDbConfig !== undefined && adapter.updateMockDb) {
-      const ws = workspaces.find((w) => w.id === id)
-      if (ws?.isRunning) {
-        if (updates.mockDbConfig?.initialData) {
-          adapter.updateMockDb(updates.mockDbConfig.initialData)
-        } else {
-          // Mock DB was disabled — destroy it in background
-          adapter.updateMockDb('')
+    if (updates.mockDbConfig !== undefined) {
+      if (updates.mockDbConfig?.initialData) {
+        addLog(id, 'Mock DB updated', 'info')
+        if (adapter.updateMockDb) {
+          const ws = workspaces.find((w) => w.id === id)
+          if (ws?.isRunning) adapter.updateMockDb(updates.mockDbConfig.initialData)
+        }
+      } else {
+        addLog(id, 'Mock DB disabled', 'info')
+        if (adapter.updateMockDb) {
+          const ws = workspaces.find((w) => w.id === id)
+          if (ws?.isRunning) adapter.updateMockDb('')
         }
       }
     }
@@ -251,10 +281,12 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
             }
           })
         )
+        addLog(id, 'Server stopped', 'info')
         toast.success(`Server stopped`, {
           description: variant === 'extension' ? `${ws.name} is no longer capturing requests` : `${ws.name} is no longer running on port ${ws.port}`,
         })
       } catch (err: unknown) {
+        addLog(id, `Failed to stop: ${err instanceof Error ? err.message : 'Unknown error'}`, 'error')
         toast.error('Failed to stop server', { description: err instanceof Error ? err.message : 'Unknown error occurred' })
       }
     } else {
@@ -278,6 +310,8 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
       })
       if (result?.success) {
         updateWorkspace(id, { isRunning: true, startedAt: new Date().toISOString() })
+        addLog(id, `Server started with ${activeEndpoints.length} endpoint${activeEndpoints.length !== 1 ? 's' : ''}`, 'success')
+        if (ws.mockDbConfig) addLog(id, 'Mock DB active', 'info')
         toast.success(variant === 'extension' ? 'Recording started' : 'Server started', {
           description:
             variant === 'extension'
@@ -287,6 +321,7 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
               : `${ws.name} is running on port ${ws.port} with ${activeEndpoints.length} endpoint${activeEndpoints.length !== 1 ? 's' : ''}`,
         })
       } else {
+        addLog(id, `Failed to start: ${result?.error || 'Unknown error'}`, 'error')
         toast.error('Failed to start server', { description: result?.error || 'Unknown error occurred' })
       }
     }
@@ -367,6 +402,7 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
       apiLogs: [],
     }
     setWorkspaces((prev) => [...prev, duplicated])
+    addLog(duplicated.id, `Duplicated from "${ws.name}"`, 'info')
     toast.success(`Workspace "${ws.name}" duplicated`)
   }
 
@@ -399,16 +435,25 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
       prev.map((ws) => {
         if (ws.id !== workspaceId) return ws
         const newEndpoints = [...ws.endpoints]
-        newEndpoints[index] = { ...newEndpoints[index], enabled: !(newEndpoints[index].enabled !== false) }
+        const ep = newEndpoints[index]
+        const willEnable = ep.enabled === false
+        newEndpoints[index] = { ...ep, enabled: willEnable }
         return { ...ws, endpoints: newEndpoints }
       })
     )
+    const ws = workspaces.find((w) => w.id === workspaceId)
+    if (ws) {
+      const ep = ws.endpoints[index]
+      const willEnable = ep.enabled === false
+      addLog(workspaceId, `Endpoint ${willEnable ? 'enabled' : 'disabled'}: ${ep.method} ${ep.path}`, 'info')
+    }
   }
 
   const toggleAllEndpoints = (workspaceId: string, enabled: boolean) => {
     setWorkspaces((prev) =>
       prev.map((ws) => (ws.id !== workspaceId ? ws : { ...ws, endpoints: ws.endpoints.map((ep) => ({ ...ep, enabled })) }))
     )
+    addLog(workspaceId, `All endpoints ${enabled ? 'enabled' : 'disabled'}`, 'info')
   }
 
   const reorderWorkspaces = (fromIndex: number, toIndex: number) => {

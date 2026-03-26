@@ -8,7 +8,10 @@ import type { MockDbSnapshot } from '@proxy-app/shared'
 initRequestLogger()
 
 // Restore proxy state and mock database from session storage on service worker startup
-const stateReady = Promise.all([restoreProxyState(), restoreMockDb()])
+const stateReady = Promise.all([restoreProxyState(), restoreMockDb()]).then(() => {
+  const state = getProxyState()
+  updateBadge(state?.isActive ? 1 : 0)
+})
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error)
@@ -124,6 +127,12 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
       return { success: true }
     }
 
+    case 'update-badge': {
+      const { count } = (message.payload || {}) as { count: number }
+      updateBadge(count ?? 0)
+      return { success: true }
+    }
+
     case 'update-endpoints': {
       const { endpoints } = (message.payload || {}) as { endpoints: unknown[] }
       updateProxyEndpoints(endpoints as Parameters<typeof updateProxyEndpoints>[0])
@@ -158,6 +167,15 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
 
     default:
       return { error: `Unknown message type: ${message.type}` }
+  }
+}
+
+function updateBadge(count: number) {
+  if (count > 0) {
+    chrome.action.setBadgeText({ text: String(count) })
+    chrome.action.setBadgeBackgroundColor({ color: '#10b981' })
+  } else {
+    chrome.action.setBadgeText({ text: '' })
   }
 }
 
