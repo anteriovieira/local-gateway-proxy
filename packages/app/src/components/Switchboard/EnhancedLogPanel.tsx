@@ -466,7 +466,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
   }
 
   const toolbar = (
-    <div className="border-b border-zinc-800 bg-zinc-900/50 p-2 flex items-center gap-2 shrink-0">
+    <div className="border-b border-zinc-900 bg-zinc-900/30 p-2 flex items-center gap-2 shrink-0">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
           <input
@@ -511,7 +511,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
   const requestsList = (
     <div className="h-full min-h-0 flex flex-col border-r border-zinc-800 custom-scrollbar" ref={scrollContainerRef}>
-      <div className="sticky top-0 z-10 px-4 py-3 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 flex items-center justify-between shrink-0">
+      <div className="sticky top-0 z-10 px-4 py-3 bg-zinc-950 backdrop-blur-md border-b border-zinc-900 flex items-center justify-between shrink-0">
         <h3 className="text-xs font-semibold text-zinc-400">Requests</h3>
         <span className="text-xs text-zinc-500 font-mono">{filteredLogs.length} {filteredLogs.length === 1 ? 'request' : 'requests'}</span>
       </div>
@@ -523,7 +523,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
         return (
           <div key={dateGroup} className="mb-4">
             {Object.entries(groupedLogs).length > 1 && (
-              <div className="px-4 py-2 bg-zinc-900/80 border-b border-zinc-800 sticky top-0 flex gap-2 items-center justify-between">
+              <div className="px-4 py-2 bg-zinc-900/30 border-b border-zinc-900 sticky top-0 flex gap-2 items-center justify-between">
                 <h3 className="text-xs font-semibold text-zinc-400">{dateGroup}</h3>
               </div>
             )}
@@ -582,7 +582,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
         <div className="flex-1 min-h-0 relative overflow-hidden">
           {requestsList}
           {selectedLog && (
-            <div className="absolute inset-y-0 left-0 w-full bg-zinc-900 shadow-xl z-20 flex flex-col">
+            <div className="absolute inset-y-0 left-0 w-full bg-zinc-950 shadow-xl z-20 flex flex-col">
               <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 shrink-0">
                 <h3 className="text-xs font-semibold text-zinc-400">Log Details</h3>
                   <button onClick={() => setSelectedLog(null)} className="p-1.5 hover:bg-zinc-800 rounded transition-colors" title="Close">
@@ -606,8 +606,8 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
         </ResizablePanel>
         <ResizableHandle withHandle />
         <ResizablePanel defaultSize={60} minSize={30}>
-          <div className="h-full min-h-0 overflow-y-auto bg-zinc-900/30 custom-scrollbar flex flex-col">
-            <div className="px-4 py-2 bg-zinc-900/50 border-b border-zinc-800 sticky top-0 shrink-0">
+          <div className="h-full min-h-0 overflow-y-auto bg-zinc-950 custom-scrollbar flex flex-col">
+            <div className="px-4 py-2 bg-zinc-900/30 border-b border-zinc-900 sticky top-0 shrink-0">
               <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Log Details</h3>
             </div>
             {selectedLog ? (

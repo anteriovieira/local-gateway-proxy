@@ -1,47 +1,26 @@
 import React from 'react'
-import { X } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { LogEntry } from '../../types'
 import { Terminal } from './Terminal'
-import { cn } from '@proxy-app/ui'
 
-interface TerminalLogModalProps {
-    isOpen: boolean
-    onClose: () => void
+interface TerminalPageProps {
+    onBack: () => void
     logs: LogEntry[]
 }
 
-export const TerminalLogModal: React.FC<TerminalLogModalProps> = ({ 
-    isOpen, 
-    onClose, 
-    logs 
-}) => {
-    if (!isOpen) return null
-
+export const TerminalPage: React.FC<TerminalPageProps> = ({ onBack, logs }) => {
     return (
-        <div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
-            onClick={onClose}
-        >
-            <div 
-                className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-            >
-                {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950/50">
-                    <h2 className="text-lg font-semibold text-white">Terminal Log</h2>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 hover:bg-zinc-800 rounded transition-colors"
-                        title="Close"
-                    >
-                        <X className="w-5 h-5 text-zinc-400" />
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 bg-zinc-900/50 shrink-0">
+                <div className="flex items-center gap-2">
+                    <button onClick={onBack} className="p-1.5 hover:bg-zinc-800 rounded transition-colors" title="Back">
+                        <ArrowLeft className="w-4 h-4 text-zinc-400" />
                     </button>
+                    <h2 className="text-sm font-semibold text-zinc-300">Terminal Log</h2>
                 </div>
-
-                {/* Terminal Content */}
-                <div className="flex-1 overflow-hidden bg-black">
-                    <Terminal logs={logs} />
-                </div>
+            </div>
+            <div className="flex-1 min-h-0 overflow-hidden bg-black">
+                <Terminal logs={logs} />
             </div>
         </div>
     )

@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { Workspace } from '../../types'
 import { EndpointList } from '../Switchboard/EndpointList'
 import { EnhancedLogPanel } from '../Switchboard/EnhancedLogPanel'
-import { TerminalLogModal } from '../Switchboard/TerminalLogModal'
 import { DefinitionsModal } from '../Switchboard/DefinitionsModal'
 import { CheckSquare, Sliders } from 'lucide-react'
 import { cn, ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@proxy-app/ui'
@@ -15,10 +14,10 @@ interface WorkspaceViewProps {
     onEndpointToggle: (index: number) => void
     onToggleAllEndpoints: (enabled: boolean) => void
     onClearLogs: () => void
+    onOpenTerminalLog?: () => void
 }
 
-export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdate, onToggleServer, onRestartServer, onEndpointToggle, onToggleAllEndpoints, onClearLogs }) => {
-    const [isTerminalLogOpen, setIsTerminalLogOpen] = useState(false)
+export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdate, onToggleServer, onRestartServer, onEndpointToggle, onToggleAllEndpoints, onClearLogs, onOpenTerminalLog }) => {
     const [isDefinitionsModalOpen, setIsDefinitionsModalOpen] = useState(false)
     const [logSearchQuery, setLogSearchQuery] = useState('')
 
@@ -82,19 +81,12 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({ workspace, onUpdat
                     <EnhancedLogPanel
                         apiLogs={workspace.apiLogs || []}
                         onClearLogs={onClearLogs}
-                        onOpenTerminalLog={() => setIsTerminalLogOpen(true)}
+                        onOpenTerminalLog={onOpenTerminalLog}
                         searchQuery={logSearchQuery}
                         onSearchQueryChange={setLogSearchQuery}
                     />
                 </ResizablePanel>
             </ResizablePanelGroup>
-
-            {/* Terminal Log Modal */}
-            <TerminalLogModal
-                isOpen={isTerminalLogOpen}
-                onClose={() => setIsTerminalLogOpen(false)}
-                logs={workspace.logs}
-            />
 
             {/* Definitions Modal */}
             <DefinitionsModal

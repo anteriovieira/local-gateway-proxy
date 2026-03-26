@@ -17,7 +17,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ actions, variant = 'desktop' }) => {
   return (
-    <div className="h-8 shrink-0 flex items-center gap-0.5 px-2 border-t border-zinc-800 bg-zinc-900/80">
+    <div className="h-8 shrink-0 flex items-center gap-0.5 px-2 border-t border-zinc-900 bg-zinc-900/30">
       {actions.map((action) => (
         <button
           key={action.id}

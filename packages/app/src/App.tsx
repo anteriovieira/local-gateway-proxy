@@ -4,17 +4,17 @@ import { Home } from './components/Layout/Home'
 import { WorkspaceView } from './components/Layout/WorkspaceView'
 import { TopBar } from './components/Layout/TopBar'
 import { Footer } from './components/Layout/Footer'
-import { SettingsModal } from './components/Layout/SettingsModal'
-import { TerminalLogModal } from './components/Switchboard/TerminalLogModal'
+import { SettingsPage } from './components/Layout/SettingsModal'
+import { TerminalPage } from './components/Switchboard/TerminalLogModal'
 import { MockPanel } from './components/Switchboard/MockPanel'
 import { MockDbPanel } from './components/Switchboard/MockDbPanel'
-import { Terminal, Layers, Sliders, History, Settings, Play, Square, Server, Database } from 'lucide-react'
-import { cn } from '@proxy-app/ui'
+import { Terminal, Layers, Sliders, History, Settings, Play, Square, RotateCw, Server, Database, ChevronsUpDown, Plus, Check } from 'lucide-react'
+import { cn, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@proxy-app/ui'
 import type { Workspace } from './types'
 import { parseGatewayConfig } from '@proxy-app/shared'
 import { useProxyAdapter } from './ProxyContext'
 
-type ExtensionNavTab = 'workspaces' | 'definitions' | 'requests' | 'database' | 'mocks' | 'settings'
+type ExtensionNavTab = 'workspaces' | 'definitions' | 'requests' | 'database' | 'mocks' | 'settings' | 'terminal'
 
 const STORAGE_KEY = 'lgp-workspaces'
 
@@ -53,16 +53,15 @@ function saveWorkspacesToStorage(workspaces: Workspace[]): void {
   }
 }
 
-type View = 'home' | 'workspace'
+type View = 'home' | 'workspace' | 'settings' | 'terminal'
 
 export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeWindowDrag?: boolean; variant?: 'desktop' | 'extension' }) {
   const adapter = useProxyAdapter()
   const [workspaces, setWorkspaces] = useState<Workspace[]>(() => loadWorkspacesFromStorage())
   const [activeId, setActiveId] = useState<string | null>(null)
   const [currentView, setCurrentView] = useState<View>('home')
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [previousView, setPreviousView] = useState<View>('home')
   const [isEndpointsPanelOpen, setIsEndpointsPanelOpen] = useState(false)
-  const [isTerminalLogOpen, setIsTerminalLogOpen] = useState(false)
   const [extensionNavTab, setExtensionNavTab] = useState<ExtensionNavTab>('requests')
 
   useEffect(() => {
@@ -161,6 +160,15 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
 
   const handleGoHome = () => {
     setCurrentView('home')
+  }
+
+  const navigateTo = (view: View) => {
+    setPreviousView(currentView)
+    setCurrentView(view)
+  }
+
+  const goBack = () => {
+    setCurrentView(previousView)
   }
 
   const updateWorkspace = (id: string, updates: Partial<Workspace>) => {
@@ -438,21 +446,12 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
       id: 'terminal',
       label: 'Terminal',
       icon: <Terminal className="w-3.5 h-3.5" />,
-      onClick: () => setIsTerminalLogOpen(true),
-      active: isTerminalLogOpen,
+      onClick: () => navigateTo('terminal'),
+      active: currentView === 'terminal',
     },
   ]
 
   if (variant === 'extension') {
-    const tabLabels: Record<ExtensionNavTab, string> = {
-      workspaces: 'Workspaces',
-      definitions: 'Definitions',
-      requests: 'History',
-      database: 'Database',
-      mocks: 'Mocks',
-      settings: 'Settings',
-    }
-
     const navItems: Array<{ tab: ExtensionNavTab; icon: React.ReactNode; label: string }> = [
       { tab: 'workspaces', icon: <Layers className="w-4 h-4" />, label: 'Workspaces' },
       { tab: 'definitions', icon: <Sliders className="w-4 h-4" />, label: 'Definitions' },
@@ -462,9 +461,9 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
     ]
 
     return (
-      <div className="flex flex-1 min-h-0 h-screen w-screen overflow-hidden bg-black text-white font-sans selection:bg-blue-500/30">
+      <div className="flex flex-1 min-h-0 h-screen w-screen overflow-hidden bg-zinc-900 text-white font-sans selection:bg-blue-500/30">
         {/* Icon sidebar */}
-        <nav className="flex flex-col items-center py-2 bg-zinc-900 border-r border-zinc-800 shrink-0" style={{ width: 48 }}>
+        <nav className="flex flex-col items-center py-2 bg-zinc-900 shrink-0" style={{ width: 48 }}>
           <div className="flex flex-col items-center gap-1 w-full px-1.5">
             {navItems.map(({ tab, icon, label }) => (
               <button
@@ -485,10 +484,10 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
           <div className="mt-auto px-1.5 w-full flex flex-col gap-1">
             <button
               title="Terminal"
-              onClick={() => setIsTerminalLogOpen(true)}
+              onClick={() => setExtensionNavTab('terminal')}
               className={cn(
                 'w-full flex items-center justify-center p-2.5 rounded-md transition-colors',
-                isTerminalLogOpen
+                extensionNavTab === 'terminal'
                   ? 'bg-zinc-700 text-white'
                   : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
               )}
@@ -497,10 +496,10 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
             </button>
             <button
               title="Settings"
-              onClick={() => setIsSettingsOpen(true)}
+              onClick={() => setExtensionNavTab('settings')}
               className={cn(
                 'w-full flex items-center justify-center p-2.5 rounded-md transition-colors',
-                isSettingsOpen
+                extensionNavTab === 'settings'
                   ? 'bg-zinc-700 text-white'
                   : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
               )}
@@ -512,50 +511,107 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
 
         {/* Content area */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
-          {/* Header */}
-          <div className="h-10 flex items-center justify-between px-3 border-b border-zinc-800 bg-zinc-900/95 shrink-0">
+          {/* Header - outside the rounded container */}
+          <div className="h-10 flex items-center justify-between px-3 bg-zinc-900 shrink-0">
             <div className="flex items-center gap-1.5 text-sm min-w-0">
-              {activeWorkspace ? (
-                <>
-                  <button
-                    onClick={() => setExtensionNavTab('workspaces')}
-                    className="text-zinc-400 hover:text-white transition-colors truncate max-w-[120px]"
-                  >
-                    {activeWorkspace.name}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-zinc-800 transition-colors text-xs font-medium text-zinc-300 min-w-0">
+                    <span className="truncate max-w-[140px]">{activeWorkspace?.name ?? 'Workspaces'}</span>
+                    <ChevronsUpDown className="w-3 h-3 text-zinc-500 shrink-0" />
                   </button>
-                  <span className="text-zinc-600 shrink-0">›</span>
-                  <span className="text-zinc-200 shrink-0">{tabLabels[extensionNavTab]}</span>
-                </>
-              ) : (
-                <span className="text-zinc-200">{tabLabels[extensionNavTab]}</span>
-              )}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-64">
+                  {workspaces.length === 0 ? (
+                    <div className="px-3 py-2 text-sm text-zinc-500 text-center">No workspaces</div>
+                  ) : (
+                    workspaces.map((ws) => (
+                      <DropdownMenuItem
+                        key={ws.id}
+                        onClick={() => { setActiveId(ws.id); setExtensionNavTab('requests') }}
+                        className="flex items-center justify-between gap-2"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium truncate">{ws.name}</div>
+                          <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
+                            <div className="flex items-center gap-1">
+                              <div className={cn("h-1.5 w-1.5 rounded-full", ws.isRunning ? "bg-emerald-500" : "bg-zinc-700")} />
+                              <span>{ws.isRunning ? "Running" : "Stopped"}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {activeId === ws.id && <Check className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={addNewWorkspace} className="text-zinc-300">
+                    <Plus className="w-4 h-4 text-zinc-400" />
+                    <span className="font-medium">New Workspace</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            {activeWorkspace && (extensionNavTab === 'requests' || extensionNavTab === 'definitions' || extensionNavTab === 'mocks' || extensionNavTab === 'database') && (
-              <div className="flex items-center gap-2 shrink-0">
-                {activeWorkspace.isRunning ? (
-                  <button
-                    onClick={() => toggleServer(activeWorkspace.id)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium bg-red-500/40 hover:bg-red-500/60 text-white transition-colors"
-                  >
-                    <Square className="w-3 h-3 fill-current" />
-                    <span>Stop</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => toggleServer(activeWorkspace.id)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium bg-emerald-500/40 hover:bg-emerald-500/60 text-white transition-colors"
-                  >
-                    <Play className="w-3 h-3 fill-current" />
-                    <span>Start</span>
-                  </button>
-                )}
+            {activeWorkspace && (
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  onClick={() => !activeWorkspace.isRunning && toggleServer(activeWorkspace.id)}
+                  disabled={activeWorkspace.isRunning}
+                  className={cn(
+                    "p-1.5 rounded transition-colors",
+                    activeWorkspace.isRunning
+                      ? "text-zinc-600 cursor-default"
+                      : "text-emerald-400 hover:bg-zinc-800 hover:text-emerald-300"
+                  )}
+                  title="Start"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => activeWorkspace.isRunning && toggleServer(activeWorkspace.id)}
+                  disabled={!activeWorkspace.isRunning}
+                  className={cn(
+                    "p-1.5 rounded transition-colors",
+                    activeWorkspace.isRunning
+                      ? "text-red-400 hover:bg-zinc-800 hover:text-red-300"
+                      : "text-zinc-600 cursor-default"
+                  )}
+                  title="Stop"
+                >
+                  <Square className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => restartServer(activeWorkspace.id)}
+                  disabled={!activeWorkspace.isRunning}
+                  className={cn(
+                    "p-1.5 rounded transition-colors",
+                    activeWorkspace.isRunning
+                      ? "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                      : "text-zinc-600 cursor-default"
+                  )}
+                  title="Restart"
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                </button>
               </div>
             )}
           </div>
 
-          {/* Tab content */}
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-            {extensionNavTab === 'workspaces' ? (
+          {/* Page content - rounded container */}
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-zinc-950 rounded-xl border border-zinc-800 mr-2 mb-2">
+            {extensionNavTab === 'settings' ? (
+              <SettingsPage
+                workspace={activeWorkspace || null}
+                onBack={() => setExtensionNavTab('requests')}
+                onUpdate={(u) => activeWorkspace && updateWorkspace(activeWorkspace.id, u)}
+                variant={variant}
+              />
+            ) : extensionNavTab === 'terminal' ? (
+              <TerminalPage
+                onBack={() => setExtensionNavTab('requests')}
+                logs={terminalLogs}
+              />
+            ) : extensionNavTab === 'workspaces' ? (
               <Home
                 workspaces={workspaces}
                 activeWorkspaceId={activeId}
@@ -598,14 +654,6 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
           </div>
         </div>
 
-        <SettingsModal
-          workspace={activeWorkspace || null}
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-          onUpdate={(u) => activeWorkspace && updateWorkspace(activeWorkspace.id, u)}
-          variant={variant}
-        />
-        <TerminalLogModal isOpen={isTerminalLogOpen} onClose={() => setIsTerminalLogOpen(false)} logs={terminalLogs} />
         <Toaster
           position="bottom-right"
           theme="dark"
@@ -619,7 +667,7 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
   }
 
   return (
-    <div className="flex flex-1 flex-col min-h-0 h-screen w-screen overflow-hidden bg-black text-white font-sans selection:bg-blue-500/30">
+    <div className="flex flex-1 flex-col min-h-0 h-screen w-screen overflow-hidden bg-zinc-900 text-white font-sans selection:bg-blue-500/30">
       <TopBar
         workspaces={workspaces}
         activeWorkspaceId={activeId}
@@ -628,18 +676,35 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
         onHome={handleGoHome}
         onSelectWorkspace={handleSelectWorkspace}
         onToggleServer={currentView === 'workspace' && activeWorkspace ? () => toggleServer(activeWorkspace.id) : undefined}
+        onRestartServer={currentView === 'workspace' && activeWorkspace ? () => restartServer(activeWorkspace.id) : undefined}
         onUpdateWorkspace={currentView === 'workspace' && activeWorkspace ? (u) => updateWorkspace(activeWorkspace.id, u) : undefined}
-        onSettings={() => setIsSettingsOpen(true)}
+        onSettings={() => navigateTo('settings')}
         onAddWorkspace={addNewWorkspace}
         nativeWindowDrag={nativeWindowDrag}
         variant={variant}
         onOpenEndpoints={variant === 'extension' ? () => setIsEndpointsPanelOpen(true) : undefined}
       />
       <div
-        className="flex flex-col overflow-hidden w-full flex-1 min-h-0"
+        className="flex flex-col overflow-hidden w-full flex-1 min-h-0 mr-2 mb-2 rounded-xl bg-zinc-950 border border-zinc-800"
         style={{ flex: '1 1 0', minHeight: 0 }}
       >
-        {currentView === 'home' ? (
+        {currentView === 'settings' ? (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
+            <SettingsPage
+              workspace={activeWorkspace || null}
+              onBack={goBack}
+              onUpdate={(u) => activeWorkspace && updateWorkspace(activeWorkspace.id, u)}
+              variant={variant}
+            />
+          </div>
+        ) : currentView === 'terminal' ? (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
+            <TerminalPage
+              onBack={goBack}
+              logs={terminalLogs}
+            />
+          </div>
+        ) : currentView === 'home' ? (
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
           <Home
             workspaces={workspaces}
@@ -673,14 +738,6 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
         )}
       </div>
       <Footer actions={footerActions} variant={variant} />
-      <TerminalLogModal isOpen={isTerminalLogOpen} onClose={() => setIsTerminalLogOpen(false)} logs={terminalLogs} />
-      <SettingsModal
-        workspace={activeWorkspace || null}
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onUpdate={(u) => activeWorkspace && updateWorkspace(activeWorkspace.id, u)}
-        variant={variant}
-      />
       <Toaster
         position="bottom-right"
         theme="dark"

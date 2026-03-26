@@ -63,16 +63,16 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-sm" onClick={onClose}>
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800 bg-zinc-900/50 shrink-0">
+    <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950/95 backdrop-blur-sm" onClick={onClose}>
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-zinc-950" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
           <h2 className="text-sm font-semibold text-zinc-300">Definitions</h2>
           <button onClick={onClose} className="p-1.5 hover:bg-zinc-800 rounded transition-colors" title="Close">
             <X className="w-4 h-4 text-zinc-400" />
           </button>
         </div>
         <Tabs defaultValue="spec" className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <TabsList variant="pill" className="justify-start gap-2 px-4 sm:px-6 py-2 border-b border-zinc-800 bg-zinc-950/50 shrink-0">
+          <TabsList variant="pill" className="justify-start gap-2 px-4 sm:px-6 py-2 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
             <TabsTrigger value="spec" variant="pill" className="gap-2">
               <Code className="w-4 h-4" />
               Spec
@@ -111,7 +111,7 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
             </div>
           </TabsContent>
         </Tabs>
-        <div className="flex items-center justify-end gap-3 px-4 py-2 border-t border-zinc-800 shrink-0 bg-zinc-950/50">
+        <div className="flex items-center justify-end gap-3 px-4 py-2 border-t border-zinc-900 shrink-0 bg-zinc-900/30">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-md transition-colors">
             Cancel
           </button>

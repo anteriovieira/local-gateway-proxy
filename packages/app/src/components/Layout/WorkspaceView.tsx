@@ -112,7 +112,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   }
 
   const endpointsPanelContent = () => (
-    <div className="h-full min-h-0 flex flex-col flex-1 overflow-hidden border-r border-zinc-900 bg-zinc-900/20">
+    <div className="h-full min-h-0 flex flex-col flex-1 overflow-hidden border-r border-zinc-900 bg-zinc-950">
       <div className="flex flex-row justify-between items-center p-3 border-b border-zinc-900 bg-zinc-900/30">
         <span className="text-xs font-medium text-zinc-400 flex-shrink-0">Endpoints</span>
         <div className="flex flex-row items-center gap-2 flex-shrink-0">

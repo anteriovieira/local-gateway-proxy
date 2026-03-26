@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { ChevronsUpDownIcon, Play, Square, Settings, Plus, List, FolderKanban } from 'lucide-react'
-import { cn } from '@proxy-app/ui'
+import React, { useRef, useEffect, useState } from 'react'
+import { ChevronsUpDown, Play, Square, RotateCw, Settings, Plus, List, FolderKanban, Check } from 'lucide-react'
+import { cn, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@proxy-app/ui'
 import type { Workspace } from '../../types'
 
 function formatElapsed(ms: number): string {
@@ -19,6 +19,7 @@ interface TopBarProps {
   onHome?: () => void
   onSelectWorkspace?: (id: string) => void
   onToggleServer?: () => void
+  onRestartServer?: () => void
   onUpdateWorkspace?: (updates: Partial<Workspace>) => void
   onSearch?: () => void
   onSettings?: () => void
@@ -37,6 +38,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   onHome,
   onSelectWorkspace,
   onToggleServer,
+  onRestartServer,
   onUpdateWorkspace,
   onSettings,
   onAddWorkspace,
@@ -44,14 +46,10 @@ export const TopBar: React.FC<TopBarProps> = ({
   nativeWindowDrag = false,
   variant = 'desktop',
 }) => {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [elapsedMs, setElapsedMs] = useState(0)
   const startTimeRef = useRef<number | null>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-  const buttonRef = useRef<HTMLButtonElement>(null)
   const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
 
-  // Track elapsed time when server is running
   useEffect(() => {
     if (workspace?.isRunning) {
       if (!startTimeRef.current) startTimeRef.current = Date.now()
@@ -65,21 +63,9 @@ export const TopBar: React.FC<TopBarProps> = ({
     }
   }, [workspace?.isRunning])
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false)
-      }
-    }
-    if (isDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isDropdownOpen])
-
   return (
     <div
-      className="h-10 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800 flex items-center justify-between shrink-0 relative z-50"
+      className="h-10 bg-zinc-900 flex items-center justify-between shrink-0 relative z-50"
       style={{
         ...(nativeWindowDrag && { WebkitAppRegion: 'drag' as React.CSSProperties['WebkitAppRegion'] }),
         paddingLeft: nativeWindowDrag && isMac ? '80px' : '16px',
@@ -87,83 +73,57 @@ export const TopBar: React.FC<TopBarProps> = ({
       } as React.CSSProperties}
     >
       <div className="flex items-center gap-2" style={nativeWindowDrag ? { WebkitAppRegion: 'no-drag' } as React.CSSProperties : undefined}>
-        <div className="relative" ref={dropdownRef}>
-          <button
-            ref={buttonRef}
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-md transition-colors text-sm hover:bg-zinc-800 text-white font-medium"
-          >
-            <span>{workspaceName ?? 'Workspaces'}</span>
-            <ChevronsUpDownIcon className="w-3 text-zinc-500" />
-          </button>
-          {isDropdownOpen && buttonRef.current && (
-            <div
-              className="fixed bg-zinc-900 border border-zinc-800 rounded-md shadow-2xl z-[9999] max-h-96 overflow-y-auto"
-              style={{
-                top: `${buttonRef.current.getBoundingClientRect().bottom + 4}px`,
-                left: `${buttonRef.current.getBoundingClientRect().left}px`,
-                width: '256px',
-              }}
-            >
-              <div className="p-2">
-                {workspaceName && onHome && (
-                  <>
-                    <button
-                      onClick={() => { onHome(); setIsDropdownOpen(false) }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-left transition-colors text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                    >
-                      <FolderKanban className="w-4 h-4 text-zinc-400" />
-                      <span className="font-medium">Manage Workspaces</span>
-                    </button>
-                    <div className="border-t border-zinc-800 my-2" />
-                  </>
-                )}
-                {workspaces.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-zinc-500 text-center">No workspaces</div>
-                ) : (
-                  workspaces.map((ws) => (
-                    <button
-                      key={ws.id}
-                      onClick={() => { onSelectWorkspace?.(ws.id); setIsDropdownOpen(false) }}
-                      className={cn(
-                        "w-full flex items-center justify-between px-3 py-2 rounded-md text-left transition-colors",
-                        activeWorkspaceId === ws.id ? "bg-zinc-800 text-white" : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                      )}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">{ws.name}</div>
-                        <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
-                          {variant === 'desktop' && <span className="font-mono">PORT: {ws.port}</span>}
-                          <div className="flex items-center gap-1">
-                            <div className={cn("h-1.5 w-1.5 rounded-full", ws.isRunning ? "bg-emerald-500" : "bg-zinc-700")} />
-                            <span>{ws.isRunning ? "Running" : "Stopped"}</span>
-                          </div>
-                        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-1.5 px-2 py-1.5 rounded-md transition-colors text-xs hover:bg-zinc-800 text-zinc-300 font-medium">
+              <span>{workspaceName ?? 'Workspaces'}</span>
+              <ChevronsUpDown className="w-3 h-3 text-zinc-500" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64">
+            {workspaceName && onHome && (
+              <>
+                <DropdownMenuItem onClick={onHome} className="text-zinc-300">
+                  <FolderKanban className="w-4 h-4 text-zinc-400" />
+                  <span className="font-medium">Manage Workspaces</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {workspaces.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-zinc-500 text-center">No workspaces</div>
+            ) : (
+              workspaces.map((ws) => (
+                <DropdownMenuItem
+                  key={ws.id}
+                  onClick={() => onSelectWorkspace?.(ws.id)}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">{ws.name}</div>
+                    <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
+                      {variant === 'desktop' && <span className="font-mono">PORT: {ws.port}</span>}
+                      <div className="flex items-center gap-1">
+                        <div className={cn("h-1.5 w-1.5 rounded-full", ws.isRunning ? "bg-emerald-500" : "bg-zinc-700")} />
+                        <span>{ws.isRunning ? "Running" : "Stopped"}</span>
                       </div>
-                      {activeWorkspaceId === ws.id && (
-                        <div className="ml-2 flex-shrink-0">
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                        </div>
-                      )}
-                    </button>
-                  ))
-                )}
-                {onAddWorkspace && (
-                  <>
-                    <div className="border-t border-zinc-800 my-2" />
-                    <button
-                      onClick={() => { onAddWorkspace(); setIsDropdownOpen(false) }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-left transition-colors text-zinc-300 hover:bg-zinc-800 hover:text-white"
-                    >
-                      <Plus className="w-4 h-4 text-zinc-400" />
-                      <span className="font-medium">Create New Workspace</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+                    </div>
+                  </div>
+                  {activeWorkspaceId === ws.id && <Check className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+                </DropdownMenuItem>
+              ))
+            )}
+            {onAddWorkspace && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onAddWorkspace} className="text-zinc-300">
+                  <Plus className="w-4 h-4 text-zinc-400" />
+                  <span className="font-medium">New Workspace</span>
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="flex items-center gap-3" style={nativeWindowDrag ? { WebkitAppRegion: 'no-drag' } as React.CSSProperties : undefined}>
@@ -180,34 +140,51 @@ export const TopBar: React.FC<TopBarProps> = ({
                 />
               </div>
             )}
-            <div className="flex items-center gap-2">
-              {workspace.isRunning ? (
-                <>
-                  <span className="text-[11px] font-mono text-zinc-500 tabular-nums">
-                    {formatElapsed(elapsedMs)}
-                  </span>
-                  <div className="w-px h-3.5 bg-zinc-700" />
-                  <button
-                    onClick={onToggleServer}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium bg-red-500/40 hover:bg-red-500/60 text-white transition-colors"
-                  >
-                    <Square className="w-3 h-3 fill-current" />
-                    <span>Stop</span>
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={onToggleServer}
-                  disabled={variant === 'desktop' && !workspace.endpoints.length}
-                  className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium transition-colors",
-                    "bg-emerald-500/40 hover:bg-emerald-500/60 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  )}
-                >
-                  <Play className="w-3 h-3 fill-current" />
-                  <span>Start</span>
-                </button>
-              )}
+            {workspace.isRunning && (
+              <span className="text-[11px] font-mono text-zinc-500 tabular-nums">
+                {formatElapsed(elapsedMs)}
+              </span>
+            )}
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => !workspace.isRunning && onToggleServer?.()}
+                disabled={workspace.isRunning || (variant === 'desktop' && !workspace.endpoints.length)}
+                className={cn(
+                  "p-1.5 rounded transition-colors",
+                  workspace.isRunning || (variant === 'desktop' && !workspace.endpoints.length)
+                    ? "text-zinc-600 cursor-default"
+                    : "text-emerald-400 hover:bg-zinc-800 hover:text-emerald-300"
+                )}
+                title="Start"
+              >
+                <Play className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => workspace.isRunning && onToggleServer?.()}
+                disabled={!workspace.isRunning}
+                className={cn(
+                  "p-1.5 rounded transition-colors",
+                  workspace.isRunning
+                    ? "text-red-400 hover:bg-zinc-800 hover:text-red-300"
+                    : "text-zinc-600 cursor-default"
+                )}
+                title="Stop"
+              >
+                <Square className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => workspace.isRunning && onRestartServer?.()}
+                disabled={!workspace.isRunning}
+                className={cn(
+                  "p-1.5 rounded transition-colors",
+                  workspace.isRunning
+                    ? "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                    : "text-zinc-600 cursor-default"
+                )}
+                title="Restart"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+              </button>
             </div>
             {onOpenEndpoints && (
               <button onClick={onOpenEndpoints} className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors" title="Endpoints">

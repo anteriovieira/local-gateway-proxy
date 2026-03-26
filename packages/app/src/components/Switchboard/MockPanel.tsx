@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import type { Workspace, EndpointDef } from '../../types'
 import { cn } from '@proxy-app/ui'
-import { Plus, Trash2, ChevronDown, ChevronRight, Check, Database } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronRight, Check, Database, Server } from 'lucide-react'
 import { JsonEditor } from '../JsonEditor'
 
 interface MockPanelProps {
@@ -123,13 +123,14 @@ export const MockPanel: React.FC<MockPanelProps> = ({ workspace, onUpdate }) => 
       </div>
 
       {/* List */}
-      <div className="p-2">
-        {mockEndpoints.length === 0 ? (
-          <div className="flex flex-col items-center justify-center text-zinc-600 p-8 border border-dashed border-zinc-800 rounded-lg h-full">
-            <p className="text-sm">No mock endpoints</p>
-            <p className="text-xs mt-1">Add a mock to intercept requests with custom responses</p>
-          </div>
-        ) : (
+      {mockEndpoints.length === 0 ? (
+        <div className="flex flex-col items-center justify-center text-zinc-600 p-8 flex-1">
+          <Server className="w-8 h-8 mb-3 text-zinc-700" />
+          <p className="text-sm">No mock endpoints</p>
+          <p className="text-xs mt-1 text-center text-zinc-600">Add a mock to intercept requests with custom responses</p>
+        </div>
+      ) : (
+        <div className="p-2">
           <div className="flex flex-col gap-2">
             {mockEndpoints.map(({ endpoint: ep, originalIndex }, mockIdx) => {
               const isExpanded = expandedIndex === mockIdx
@@ -346,8 +347,8 @@ export const MockPanel: React.FC<MockPanelProps> = ({ workspace, onUpdate }) => 
               )
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

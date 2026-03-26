@@ -42,7 +42,7 @@ export const TopBar: React.FC<TopBarProps> = ({ workspaces, activeWorkspaceId, w
 
     return (
         <div
-            className="h-10 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800 flex items-center justify-between shrink-0 relative z-50"
+            className="h-10 bg-zinc-900/95 backdrop-blur-sm flex items-center justify-between shrink-0 relative z-50"
             style={{
                 WebkitAppRegion: 'drag',
                 paddingLeft: isMac ? '80px' : '16px',
