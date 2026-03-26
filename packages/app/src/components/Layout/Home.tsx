@@ -109,7 +109,7 @@ export const Home: React.FC<HomeProps> = ({ workspaces, activeWorkspaceId, onSel
 
   return (
     <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden">
-      <div className="flex flex-row justify-between items-center p-3 border-b border-zinc-900 bg-zinc-900/30 text-xs font-semibold text-zinc-400 shrink-0">
+      <div className="flex flex-row justify-between items-center p-3 border-b border-zinc-900 bg-zinc-900/30 text-xs font-medium text-zinc-400 shrink-0">
         <span className="flex items-center gap-2 flex-shrink-0">
           <span>Workspaces</span>
           {workspaces.length > 0 && (

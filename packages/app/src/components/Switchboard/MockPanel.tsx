@@ -106,9 +106,9 @@ export const MockPanel: React.FC<MockPanelProps> = ({ workspace, onUpdate }) => 
   return (
     <div className="flex-1 flex flex-col overflow-auto custom-scrollbar">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-zinc-800 shrink-0">
+      <div className="flex items-center justify-between p-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-zinc-300">Mock Endpoints</span>
+          <span className="text-xs font-medium text-zinc-400">Mock Endpoints</span>
           <span className="text-[10px] text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded-full">
             {mockEndpoints.length}
           </span>

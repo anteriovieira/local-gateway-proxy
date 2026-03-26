@@ -9,12 +9,12 @@ import { TerminalPage } from './components/Switchboard/TerminalLogModal'
 import { MockPanel } from './components/Switchboard/MockPanel'
 import { MockDbPanel } from './components/Switchboard/MockDbPanel'
 import { Terminal, Layers, Sliders, History, Settings, Play, Square, RotateCw, Server, Database, ChevronsUpDown, Plus, Check } from 'lucide-react'
-import { cn, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@proxy-app/ui'
+import { cn, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@proxy-app/ui'
 import type { Workspace } from './types'
 import { parseGatewayConfig } from '@proxy-app/shared'
 import { useProxyAdapter } from './ProxyContext'
 
-type ExtensionNavTab = 'workspaces' | 'definitions' | 'requests' | 'database' | 'mocks' | 'settings' | 'terminal'
+type ExtensionNavTab = 'workspaces' | 'definitions' | 'requests' | 'database' | 'mocks' | 'settings'
 
 const STORAGE_KEY = 'lgp-workspaces'
 
@@ -53,15 +53,15 @@ function saveWorkspacesToStorage(workspaces: Workspace[]): void {
   }
 }
 
-type View = 'home' | 'workspace' | 'settings' | 'terminal'
+type View = 'home' | 'workspace' | 'settings'
 
 export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeWindowDrag?: boolean; variant?: 'desktop' | 'extension' }) {
   const adapter = useProxyAdapter()
   const [workspaces, setWorkspaces] = useState<Workspace[]>(() => loadWorkspacesFromStorage())
   const [activeId, setActiveId] = useState<string | null>(null)
   const [currentView, setCurrentView] = useState<View>('home')
-  const [previousView, setPreviousView] = useState<View>('home')
   const [isEndpointsPanelOpen, setIsEndpointsPanelOpen] = useState(false)
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false)
   const [extensionNavTab, setExtensionNavTab] = useState<ExtensionNavTab>('requests')
 
   useEffect(() => {
@@ -96,9 +96,6 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
       )
     })
     const unsubApiLog = adapter.onApiLog((data) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/d3449e43-fac1-4b3c-bcd4-c3d1cad8abb2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bfb319'},body:JSON.stringify({sessionId:'bfb319',location:'App.tsx:onApiLog',message:'api-log received',data:{workspaceId:data.workspaceId,isUpdate:data.isUpdate,logId:data.apiLog?.id,responseBodyLen:data.apiLog?.responseBody?.length??0,hasResponseBody:!!data.apiLog?.responseBody},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-      // #endregion
       setWorkspaces((prev) =>
         prev.map((ws) => {
           if (ws.id !== data.workspaceId) return ws
@@ -163,12 +160,7 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
   }
 
   const navigateTo = (view: View) => {
-    setPreviousView(currentView)
     setCurrentView(view)
-  }
-
-  const goBack = () => {
-    setCurrentView(previousView)
   }
 
   const updateWorkspace = (id: string, updates: Partial<Workspace>) => {
@@ -446,8 +438,8 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
       id: 'terminal',
       label: 'Terminal',
       icon: <Terminal className="w-3.5 h-3.5" />,
-      onClick: () => navigateTo('terminal'),
-      active: currentView === 'terminal',
+      onClick: () => setIsTerminalOpen((v) => !v),
+      active: isTerminalOpen,
     },
   ]
 
@@ -463,56 +455,69 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
     return (
       <div className="flex flex-1 min-h-0 h-screen w-screen overflow-hidden bg-zinc-900 text-white font-sans selection:bg-blue-500/30">
         {/* Icon sidebar */}
+        <TooltipProvider delayDuration={300}>
         <nav className="flex flex-col items-center py-2 bg-zinc-900 shrink-0" style={{ width: 48 }}>
           <div className="flex flex-col items-center gap-1 w-full px-1.5">
             {navItems.map(({ tab, icon, label }) => (
-              <button
-                key={tab}
-                title={label}
-                onClick={() => setExtensionNavTab(tab)}
-                className={cn(
-                  'w-full flex items-center justify-center p-2.5 rounded-md transition-colors',
-                  extensionNavTab === tab
-                    ? 'bg-zinc-700 text-white'
-                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-                )}
-              >
-                {icon}
-              </button>
+              <Tooltip key={tab}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setExtensionNavTab(tab)}
+                    className={cn(
+                      'w-full flex items-center justify-center p-2.5 rounded-md transition-colors',
+                      extensionNavTab === tab
+                        ? 'bg-zinc-700 text-white'
+                        : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                    )}
+                  >
+                    {icon}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">{label}</TooltipContent>
+              </Tooltip>
             ))}
           </div>
           <div className="mt-auto px-1.5 w-full flex flex-col gap-1">
-            <button
-              title="Terminal"
-              onClick={() => setExtensionNavTab('terminal')}
-              className={cn(
-                'w-full flex items-center justify-center p-2.5 rounded-md transition-colors',
-                extensionNavTab === 'terminal'
-                  ? 'bg-zinc-700 text-white'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-              )}
-            >
-              <Terminal className="w-4 h-4" />
-            </button>
-            <button
-              title="Settings"
-              onClick={() => setExtensionNavTab('settings')}
-              className={cn(
-                'w-full flex items-center justify-center p-2.5 rounded-md transition-colors',
-                extensionNavTab === 'settings'
-                  ? 'bg-zinc-700 text-white'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-              )}
-            >
-              <Settings className="w-4 h-4" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setExtensionNavTab('settings')}
+                  className={cn(
+                    'w-full flex items-center justify-center p-2.5 rounded-md transition-colors',
+                    extensionNavTab === 'settings'
+                      ? 'bg-zinc-700 text-white'
+                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                  )}
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Settings</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setIsTerminalOpen((v) => !v)}
+                  className={cn(
+                    'w-full flex items-center justify-center p-2.5 rounded-md transition-colors',
+                    isTerminalOpen
+                      ? 'bg-zinc-700 text-white'
+                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                  )}
+                >
+                  <Terminal className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Terminal</TooltipContent>
+            </Tooltip>
           </div>
         </nav>
+        </TooltipProvider>
 
         {/* Content area */}
         <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
           {/* Header - outside the rounded container */}
-          <div className="h-10 flex items-center justify-between px-3 bg-zinc-900 shrink-0">
+          <div className="h-12 flex items-center justify-between px-3 bg-zinc-900 shrink-0">
             <div className="flex items-center gap-1.5 text-sm min-w-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -597,58 +602,62 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
             )}
           </div>
 
-          {/* Page content - rounded container */}
-          <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-zinc-950 rounded-xl border border-zinc-800 mr-2 mb-2">
-            {extensionNavTab === 'settings' ? (
-              <SettingsPage
-                workspace={activeWorkspace || null}
-                onBack={() => setExtensionNavTab('requests')}
-                onUpdate={(u) => activeWorkspace && updateWorkspace(activeWorkspace.id, u)}
-                variant={variant}
-              />
-            ) : extensionNavTab === 'terminal' ? (
-              <TerminalPage
-                onBack={() => setExtensionNavTab('requests')}
-                logs={terminalLogs}
-              />
-            ) : extensionNavTab === 'workspaces' ? (
-              <Home
-                workspaces={workspaces}
-                activeWorkspaceId={activeId}
-                onSelectWorkspace={handleSelectWorkspace}
-                onAddWorkspace={addNewWorkspace}
-                onReorderWorkspaces={reorderWorkspaces}
-                onRemoveWorkspace={removeWorkspace}
-                onToggleServer={toggleServer}
-                onDuplicateWorkspace={duplicateWorkspace}
-                variant={variant}
-              />
-            ) : extensionNavTab === 'database' && activeWorkspace ? (
-              <MockDbPanel
-                workspace={activeWorkspace}
-                onUpdate={(u) => updateWorkspace(activeWorkspace.id, u)}
-              />
-            ) : extensionNavTab === 'mocks' && activeWorkspace ? (
-              <MockPanel
-                workspace={activeWorkspace}
-                onUpdate={(u) => updateWorkspace(activeWorkspace.id, u)}
-              />
-            ) : activeWorkspace ? (
-              <WorkspaceView
-                workspace={activeWorkspace}
-                onUpdate={(u) => updateWorkspace(activeWorkspace.id, u)}
-                onToggleServer={() => toggleServer(activeWorkspace.id)}
-                onRestartServer={() => restartServer(activeWorkspace.id)}
-                onEndpointToggle={(idx) => toggleEndpoint(activeWorkspace.id, idx)}
-                onToggleAllEndpoints={(enabled) => toggleAllEndpoints(activeWorkspace.id, enabled)}
-                onClearLogs={() => clearLogs(activeWorkspace.id)}
-                variant="extension"
-                isEndpointsPanelOpen={extensionNavTab === 'definitions'}
-                onCloseEndpointsPanel={() => setExtensionNavTab('requests')}
-              />
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-zinc-600 text-sm">
-                Select a workspace
+          {/* Page + Terminal vertical split */}
+          <div className="flex-1 min-h-0 flex flex-col mr-2 mb-2 gap-2">
+            {/* Page content - rounded container */}
+            <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-zinc-950 rounded-xl border border-zinc-800">
+              {extensionNavTab === 'settings' ? (
+                <SettingsPage
+                  workspace={activeWorkspace || null}
+                  onUpdate={(u) => activeWorkspace && updateWorkspace(activeWorkspace.id, u)}
+                  variant={variant}
+                />
+              ) : extensionNavTab === 'workspaces' ? (
+                <Home
+                  workspaces={workspaces}
+                  activeWorkspaceId={activeId}
+                  onSelectWorkspace={handleSelectWorkspace}
+                  onAddWorkspace={addNewWorkspace}
+                  onReorderWorkspaces={reorderWorkspaces}
+                  onRemoveWorkspace={removeWorkspace}
+                  onToggleServer={toggleServer}
+                  onDuplicateWorkspace={duplicateWorkspace}
+                  variant={variant}
+                />
+              ) : extensionNavTab === 'database' && activeWorkspace ? (
+                <MockDbPanel
+                  workspace={activeWorkspace}
+                  onUpdate={(u) => updateWorkspace(activeWorkspace.id, u)}
+                />
+              ) : extensionNavTab === 'mocks' && activeWorkspace ? (
+                <MockPanel
+                  workspace={activeWorkspace}
+                  onUpdate={(u) => updateWorkspace(activeWorkspace.id, u)}
+                />
+              ) : activeWorkspace ? (
+                <WorkspaceView
+                  workspace={activeWorkspace}
+                  onUpdate={(u) => updateWorkspace(activeWorkspace.id, u)}
+                  onToggleServer={() => toggleServer(activeWorkspace.id)}
+                  onRestartServer={() => restartServer(activeWorkspace.id)}
+                  onEndpointToggle={(idx) => toggleEndpoint(activeWorkspace.id, idx)}
+                  onToggleAllEndpoints={(enabled) => toggleAllEndpoints(activeWorkspace.id, enabled)}
+                  onClearLogs={() => clearLogs(activeWorkspace.id)}
+                  variant="extension"
+                  isEndpointsPanelOpen={extensionNavTab === 'definitions'}
+                  onCloseEndpointsPanel={() => setExtensionNavTab('requests')}
+                />
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-zinc-600 text-sm">
+                  Select a workspace
+                </div>
+              )}
+            </div>
+
+            {/* Terminal panel */}
+            {isTerminalOpen && (
+              <div className="h-48 shrink-0 overflow-hidden flex flex-col bg-zinc-950 rounded-xl border border-zinc-800">
+                <TerminalPage logs={terminalLogs} />
               </div>
             )}
           </div>
@@ -682,59 +691,59 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
         onAddWorkspace={addNewWorkspace}
         nativeWindowDrag={nativeWindowDrag}
         variant={variant}
-        onOpenEndpoints={variant === 'extension' ? () => setIsEndpointsPanelOpen(true) : undefined}
       />
       <div
-        className="flex flex-col overflow-hidden w-full flex-1 min-h-0 mr-2 mb-2 rounded-xl bg-zinc-950 border border-zinc-800"
+        className="flex flex-col overflow-hidden w-full flex-1 min-h-0 mr-2 mb-2 gap-2"
         style={{ flex: '1 1 0', minHeight: 0 }}
       >
-        {currentView === 'settings' ? (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
-            <SettingsPage
-              workspace={activeWorkspace || null}
-              onBack={goBack}
-              onUpdate={(u) => activeWorkspace && updateWorkspace(activeWorkspace.id, u)}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden rounded-xl bg-zinc-950 border border-zinc-800">
+          {currentView === 'settings' ? (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
+              <SettingsPage
+                workspace={activeWorkspace || null}
+                onUpdate={(u) => activeWorkspace && updateWorkspace(activeWorkspace.id, u)}
+                variant={variant}
+              />
+            </div>
+          ) : currentView === 'home' ? (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
+            <Home
+              workspaces={workspaces}
+              activeWorkspaceId={activeId}
+              onSelectWorkspace={handleSelectWorkspace}
+              onAddWorkspace={addNewWorkspace}
+              onReorderWorkspaces={reorderWorkspaces}
+              onRemoveWorkspace={removeWorkspace}
+              onToggleServer={toggleServer}
+              onDuplicateWorkspace={duplicateWorkspace}
               variant={variant}
             />
-          </div>
-        ) : currentView === 'terminal' ? (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
-            <TerminalPage
-              onBack={goBack}
-              logs={terminalLogs}
+            </div>
+          ) : activeWorkspace ? (
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
+            <WorkspaceView
+              workspace={activeWorkspace}
+              onUpdate={(u) => updateWorkspace(activeWorkspace.id, u)}
+              onToggleServer={() => toggleServer(activeWorkspace.id)}
+              onRestartServer={() => restartServer(activeWorkspace.id)}
+              onEndpointToggle={(idx) => toggleEndpoint(activeWorkspace.id, idx)}
+              onToggleAllEndpoints={(enabled) => toggleAllEndpoints(activeWorkspace.id, enabled)}
+              onClearLogs={() => clearLogs(activeWorkspace.id)}
+              variant={variant}
+              isEndpointsPanelOpen={isEndpointsPanelOpen}
+              onCloseEndpointsPanel={() => setIsEndpointsPanelOpen(false)}
             />
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-zinc-800">Select a workspace</div>
+          )}
+        </div>
+
+        {/* Terminal panel */}
+        {isTerminalOpen && (
+          <div className="h-48 shrink-0 overflow-hidden flex flex-col rounded-xl bg-zinc-950 border border-zinc-800">
+            <TerminalPage logs={terminalLogs} />
           </div>
-        ) : currentView === 'home' ? (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
-          <Home
-            workspaces={workspaces}
-            activeWorkspaceId={activeId}
-            onSelectWorkspace={handleSelectWorkspace}
-            onAddWorkspace={addNewWorkspace}
-            onReorderWorkspaces={reorderWorkspaces}
-            onRemoveWorkspace={removeWorkspace}
-            onToggleServer={toggleServer}
-            onDuplicateWorkspace={duplicateWorkspace}
-            variant={variant}
-          />
-          </div>
-        ) : activeWorkspace ? (
-          <div className="flex-1 min-h-0 flex flex-col overflow-hidden w-full">
-          <WorkspaceView
-            workspace={activeWorkspace}
-            onUpdate={(u) => updateWorkspace(activeWorkspace.id, u)}
-            onToggleServer={() => toggleServer(activeWorkspace.id)}
-            onRestartServer={() => restartServer(activeWorkspace.id)}
-            onEndpointToggle={(idx) => toggleEndpoint(activeWorkspace.id, idx)}
-            onToggleAllEndpoints={(enabled) => toggleAllEndpoints(activeWorkspace.id, enabled)}
-            onClearLogs={() => clearLogs(activeWorkspace.id)}
-            variant={variant}
-            isEndpointsPanelOpen={isEndpointsPanelOpen}
-            onCloseEndpointsPanel={() => setIsEndpointsPanelOpen(false)}
-          />
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-zinc-800">Select a workspace</div>
         )}
       </div>
       <Footer actions={footerActions} variant={variant} />

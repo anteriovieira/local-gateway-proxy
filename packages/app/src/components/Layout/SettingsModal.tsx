@@ -1,18 +1,17 @@
 import React, { useState } from 'react'
-import { ArrowLeft, Settings, Pencil, Link2, Radio } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import type { Workspace } from '../../types'
 import { cn, Tabs, TabsList, TabsTrigger, TabsContent } from '@proxy-app/ui'
 
 interface SettingsPageProps {
   workspace: Workspace | null
-  onBack: () => void
   onUpdate: (updates: Partial<Workspace>) => void
   variant?: 'desktop' | 'extension'
 }
 
 type TabType = 'general' | 'integration' | 'capture'
 
-export const SettingsPage: React.FC<SettingsPageProps> = ({ workspace, onBack, onUpdate, variant = 'desktop' }) => {
+export const SettingsPage: React.FC<SettingsPageProps> = ({ workspace, onUpdate, variant = 'desktop' }) => {
   const [activeTab, setActiveTab] = useState<TabType>('general')
   const [editingName, setEditingName] = useState(false)
 
@@ -23,27 +22,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ workspace, onBack, o
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-zinc-950">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
-        <div className="flex items-center gap-2">
-          <button onClick={onBack} className="p-1.5 hover:bg-zinc-800 rounded transition-colors" title="Back">
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
-          </button>
-          <h2 className="text-sm font-semibold text-zinc-300">Settings</h2>
-        </div>
+      <div className="flex flex-row justify-between items-center p-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
+        <span className="text-xs font-medium text-zinc-400">Settings</span>
       </div>
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <TabsList variant="pill" className="justify-start gap-2 px-4 sm:px-6 py-2 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
-          <TabsTrigger value="general" variant="pill" className="gap-2">
-            <Settings className="w-4 h-4" />
+        <TabsList variant="pill" className="justify-start gap-1 px-3 py-1.5 border-b border-zinc-900 shrink-0">
+          <TabsTrigger value="general" variant="pill" className="text-xs px-2.5 py-1">
             General
           </TabsTrigger>
-          <TabsTrigger value="integration" variant="pill" className="gap-2">
-            <Link2 className="w-4 h-4" />
+          <TabsTrigger value="integration" variant="pill" className="text-xs px-2.5 py-1">
             Integration
           </TabsTrigger>
           {variant === 'extension' && (
-            <TabsTrigger value="capture" variant="pill" className="gap-2">
-              <Radio className="w-4 h-4" />
+            <TabsTrigger value="capture" variant="pill" className="text-xs px-2.5 py-1">
               Capture
             </TabsTrigger>
           )}
