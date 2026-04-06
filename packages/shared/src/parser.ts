@@ -1,4 +1,4 @@
-import type { EndpointDef } from './types'
+import type { EndpointDef } from './types.js'
 
 export interface GatewayConfig {
     endpoints: EndpointDef[]

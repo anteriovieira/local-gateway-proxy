@@ -574,7 +574,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
   if (variant === 'extension') {
     return (
       <div className="h-full flex flex-col bg-zinc-950 text-zinc-100">
-        <div className="flex flex-row justify-between items-center p-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
+        <div className="flex flex-row justify-between items-center h-10 px-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
           <span className="text-xs font-medium text-zinc-400">Requests</span>
           <span className="text-xs text-zinc-600">{filteredLogs.length} {filteredLogs.length === 1 ? 'request' : 'requests'}</span>
         </div>
@@ -583,7 +583,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
           {requestsList}
           {selectedLog && (
             <div className="absolute inset-y-0 left-0 w-full bg-zinc-950 shadow-xl z-20 flex flex-col">
-              <div className="flex items-center justify-between p-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
+              <div className="flex items-center justify-between h-10 px-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
                 <span className="text-xs font-medium text-zinc-400">Log Details</span>
                   <button onClick={() => setSelectedLog(null)} className="p-1.5 hover:bg-zinc-800 rounded transition-colors" title="Close">
                     <X className="w-4 h-4 text-zinc-400" />
@@ -599,7 +599,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
   return (
     <div className="h-full min-h-0 flex flex-col flex-1 bg-zinc-950 text-zinc-100 overflow-hidden">
-      <div className="flex flex-row justify-between items-center p-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
+      <div className="flex flex-row justify-between items-center h-10 px-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
         <span className="text-xs font-medium text-zinc-400">Requests</span>
         <span className="text-xs text-zinc-600">{filteredLogs.length} {filteredLogs.length === 1 ? 'request' : 'requests'}</span>
       </div>
@@ -608,10 +608,10 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
         <ResizablePanel defaultSize={40} minSize={20}>
           {requestsList}
         </ResizablePanel>
-        <ResizableHandle withHandle />
+        <ResizableHandle className="w-1.5 bg-transparent after:bg-transparent hover:bg-zinc-700/50 transition-colors rounded" />
         <ResizablePanel defaultSize={60} minSize={30}>
           <div className="h-full min-h-0 overflow-y-auto bg-zinc-950 custom-scrollbar flex flex-col">
-            <div className="p-3 bg-zinc-900/30 border-b border-zinc-900 sticky top-0 shrink-0">
+            <div className="flex items-center justify-between h-10 px-3 bg-zinc-900/30 border-b border-zinc-900 sticky top-0 shrink-0">
               <span className="text-xs font-medium text-zinc-400">Log Details</span>
             </div>
             {selectedLog ? (

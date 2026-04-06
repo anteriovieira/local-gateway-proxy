@@ -112,8 +112,8 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   }
 
   const endpointsPanelContent = () => (
-    <div className="h-full min-h-0 flex flex-col flex-1 overflow-hidden border-r border-zinc-900 bg-zinc-950">
-      <div className="flex flex-row justify-between items-center p-3 border-b border-zinc-900 bg-zinc-900/30">
+    <div className="h-full min-h-0 flex flex-col flex-1 overflow-hidden bg-zinc-950">
+      <div className="flex flex-row justify-between items-center h-10 px-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
         <span className="text-xs font-medium text-zinc-400 flex-shrink-0">Endpoints</span>
         <div className="flex flex-row items-center gap-2 flex-shrink-0">
           <span className="text-xs text-zinc-600 whitespace-nowrap">{workspace.endpoints.filter((e) => e.enabled !== false).length} active</span>
@@ -121,7 +121,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
             <button
               onClick={() => onToggleAllEndpoints(!allEndpointsEnabled)}
               className={cn(
-                "flex items-center gap-1 px-2 py-1 text-[10px] rounded transition-colors border whitespace-nowrap",
+                "flex items-center gap-1 px-2 py-1 text-xs rounded transition-colors border whitespace-nowrap",
                 allEndpointsEnabled ? "bg-blue-500/10 border-blue-500/20 text-blue-400 hover:bg-blue-500/20" : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700"
               )}
               title={allEndpointsEnabled ? "Unmark all" : "Mark all"}
@@ -182,22 +182,26 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-zinc-950 w-full h-full">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-transparent w-full h-full">
       <ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0 w-full h-full">
         <ResizablePanel defaultSize={40} minSize={25}>
-          {endpointsPanelContent()}
+          <div className="h-full rounded-xl bg-zinc-950 border border-zinc-800 overflow-hidden">
+            {endpointsPanelContent()}
+          </div>
         </ResizablePanel>
-        <ResizableHandle withHandle />
+        <ResizableHandle className="w-1.5 bg-transparent after:bg-transparent hover:bg-zinc-700/50 transition-colors rounded" />
         <ResizablePanel defaultSize={60} minSize={15}>
-          <EnhancedLogPanel
-            apiLogs={workspace.apiLogs || []}
-            onClearLogs={onClearLogs}
-            searchQuery={logSearchQuery}
-            onSearchQueryChange={setLogSearchQuery}
-            onAddToDefinitions={handleAddToDefinitions}
-            onCreateMock={handleCreateMock}
-            endpoints={workspace.endpoints}
-          />
+          <div className="h-full rounded-xl bg-zinc-950 border border-zinc-800 overflow-hidden">
+            <EnhancedLogPanel
+              apiLogs={workspace.apiLogs || []}
+              onClearLogs={onClearLogs}
+              searchQuery={logSearchQuery}
+              onSearchQueryChange={setLogSearchQuery}
+              onAddToDefinitions={handleAddToDefinitions}
+              onCreateMock={handleCreateMock}
+              endpoints={workspace.endpoints}
+            />
+          </div>
         </ResizablePanel>
       </ResizablePanelGroup>
       <DefinitionsModal

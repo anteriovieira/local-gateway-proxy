@@ -14,7 +14,7 @@
     "dist": "pnpm build:icons && pnpm build && electron-builder",
     "start": "electron .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.node.json --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist tsconfig.node.tsbuildinfo"
   },
   "keywords": ["proxy", "gateway", "api", "development", "local-server", "api-gateway", "aws", "electron", "desktop-app"],
   "author": "",

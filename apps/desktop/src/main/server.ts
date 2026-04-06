@@ -278,7 +278,7 @@ export class ServerManager {
                                 const responseStr = JSON.stringify(finalBody)
 
                                 for (const [k, v] of Object.entries(result.headers)) {
-                                    res.setHeader(k, v)
+                                    res.setHeader(k, v as string | number | readonly string[])
                                 }
                                 res.status(result.status).json(finalBody)
 

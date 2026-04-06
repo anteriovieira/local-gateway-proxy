@@ -88,21 +88,19 @@ export const MockDbPanel: React.FC<MockDbPanelProps> = ({ workspace, onUpdate })
   return (
     <div className="flex-1 flex flex-col overflow-auto custom-scrollbar">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
+      <div className="flex items-center justify-between h-10 px-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
         <div className="flex items-center gap-2">
           <Database className="w-3.5 h-3.5 text-violet-400" />
           <span className="text-xs font-medium text-zinc-400">Mock Database</span>
           {isEnabled && (
-            <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
-              Active
-            </span>
+            <span className="text-xs text-emerald-400">Active</span>
           )}
         </div>
         <div className="flex items-center gap-2">
           {hasChanges && !jsonError && isEnabled && (
             <button
               onClick={saveConfig}
-              className="px-2 py-1 text-[11px] font-medium rounded bg-violet-500/20 hover:bg-violet-500/30 text-violet-400 transition-colors"
+              className="px-3 py-1 text-xs bg-zinc-900 hover:bg-zinc-700 border border-zinc-700 rounded-md text-zinc-300 transition-colors whitespace-nowrap"
             >
               Save Changes
             </button>
@@ -110,13 +108,13 @@ export const MockDbPanel: React.FC<MockDbPanelProps> = ({ workspace, onUpdate })
           <button
             onClick={handleToggle}
             className={cn(
-              "flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded transition-colors",
+              "flex items-center gap-1.5 px-3 py-1 text-xs rounded-md border transition-colors whitespace-nowrap",
               isEnabled
-                ? "bg-red-500/20 hover:bg-red-500/30 text-red-400"
-                : "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400"
+                ? "bg-zinc-900 hover:bg-zinc-700 border-zinc-700 text-red-400"
+                : "bg-zinc-900 hover:bg-zinc-700 border-zinc-700 text-emerald-400"
             )}
           >
-            <Power className="w-3 h-3" />
+            <Power className="w-3.5 h-3.5" />
             {isEnabled ? 'Disable' : 'Enable'}
           </button>
         </div>

@@ -67,12 +67,15 @@ export const TopBar: React.FC<TopBarProps> = ({
     <div
       className="h-10 bg-zinc-900 flex items-center justify-between shrink-0 relative z-50"
       style={{
-        ...(nativeWindowDrag && { WebkitAppRegion: 'drag' as React.CSSProperties['WebkitAppRegion'] }),
-        paddingLeft: nativeWindowDrag && isMac ? '80px' : '16px',
+        ...(nativeWindowDrag ? { WebkitAppRegion: 'drag' } : {}),
+        paddingLeft: nativeWindowDrag && isMac ? '90px' : '16px',
         paddingRight: '16px',
-      } as React.CSSProperties}
+      }}
     >
-      <div className="flex items-center gap-2" style={nativeWindowDrag ? { WebkitAppRegion: 'no-drag' } as React.CSSProperties : undefined}>
+      <div
+        className="flex items-center gap-2"
+        style={nativeWindowDrag ? { WebkitAppRegion: 'no-drag' } : undefined}
+      >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex items-center gap-1.5 px-2 py-1.5 rounded-md transition-colors text-xs hover:bg-zinc-800 text-zinc-300 font-medium">
@@ -126,7 +129,10 @@ export const TopBar: React.FC<TopBarProps> = ({
         </DropdownMenu>
       </div>
 
-      <div className="flex items-center gap-3" style={nativeWindowDrag ? { WebkitAppRegion: 'no-drag' } as React.CSSProperties : undefined}>
+      <div
+        className="flex items-center gap-3"
+        style={nativeWindowDrag ? { WebkitAppRegion: 'no-drag' } : undefined}
+      >
         {workspace && (
           <>
             {variant === 'desktop' && (

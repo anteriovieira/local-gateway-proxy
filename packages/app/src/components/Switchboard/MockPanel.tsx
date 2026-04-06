@@ -106,18 +106,16 @@ export const MockPanel: React.FC<MockPanelProps> = ({ workspace, onUpdate }) => 
   return (
     <div className="flex-1 flex flex-col overflow-auto custom-scrollbar">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
+      <div className="flex items-center justify-between h-10 px-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-zinc-400">Mock Endpoints</span>
-          <span className="text-[10px] text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded-full">
-            {mockEndpoints.length}
-          </span>
+          <span className="text-xs text-zinc-600">{mockEndpoints.length}</span>
         </div>
         <button
           onClick={addMock}
-          className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded bg-violet-500/20 hover:bg-violet-500/30 text-violet-400 transition-colors"
+          className="px-3 py-1 text-xs bg-zinc-900 hover:bg-zinc-700 border border-zinc-700 rounded-md text-zinc-300 flex items-center gap-1.5 transition-colors whitespace-nowrap"
         >
-          <Plus className="w-3 h-3" />
+          <Plus className="w-3.5 h-3.5" />
           Add Mock
         </button>
       </div>
