@@ -717,9 +717,9 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
                 <button
                   onClick={() => handleNavClick('settings')}
                   className={cn(
-                    'w-10 h-10  flex items-center justify-center shrink-0 rounded-md transition-colors',
+                    'w-10 h-10 px-3 flex items-center justify-center shrink-0 rounded-md transition-colors',
                     isNavActive('settings')
-                      ? 'bg-zinc-700 text-white'
+                      ? 'bg-zinc-800 text-white'
                       : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
                   )}
                 >
