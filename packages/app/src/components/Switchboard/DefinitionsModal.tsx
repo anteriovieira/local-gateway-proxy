@@ -72,21 +72,43 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
   const content = (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-zinc-950">
       {!embedded && (
-        <div className="flex items-center justify-between h-10 px-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
+        <div className="flex flex-row justify-between items-center h-10 px-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
           <span className="text-xs font-medium text-zinc-400">Definitions</span>
-          <button onClick={onClose} className="p-1.5 hover:bg-zinc-800 rounded transition-colors" title="Close">
-            <X className="w-4 h-4 text-zinc-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleApply}
+              disabled={isApplying}
+              className={cn(
+                "px-3 py-1 text-xs bg-zinc-900 hover:bg-zinc-700 border border-zinc-700 rounded-md text-zinc-300 flex items-center gap-1.5 transition-colors whitespace-nowrap",
+                isApplying && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              {isApplying ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-zinc-500/30 border-t-zinc-300 rounded-full animate-spin" />
+                  <span>Applying...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Apply{isRunning ? ' & Reload' : ''}</span>
+                </>
+              )}
+            </button>
+            <button onClick={onClose} className="p-1.5 hover:bg-zinc-800 rounded transition-colors" title="Close">
+              <X className="w-4 h-4 text-zinc-400" />
+            </button>
+          </div>
         </div>
       )}
       <Tabs defaultValue="spec" className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <TabsList variant="pill" className="justify-start gap-2 px-4 sm:px-6 py-2 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
-          <TabsTrigger value="spec" variant="pill" className="gap-2">
-            <Code className="w-4 h-4" />
+        <TabsList variant="pill" className="justify-start gap-1 px-3 py-1.5 border-b border-zinc-900 shrink-0">
+          <TabsTrigger value="spec" variant="pill" className="text-xs px-2.5 py-1 gap-1.5">
+            <Code className="w-3.5 h-3.5" />
             Spec
           </TabsTrigger>
-          <TabsTrigger value="variables" variant="pill" className="gap-2">
-            <Variable className="w-4 h-4" />
+          <TabsTrigger value="variables" variant="pill" className="text-xs px-2.5 py-1 gap-1.5">
+            <Variable className="w-3.5 h-3.5" />
             Variables
           </TabsTrigger>
         </TabsList>
@@ -119,33 +141,30 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
           </div>
         </TabsContent>
       </Tabs>
-      <div className="flex items-center justify-end gap-3 px-4 py-2 border-t border-zinc-900 shrink-0 bg-zinc-900/30">
-        {!embedded && (
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-md transition-colors">
-            Cancel
+      {embedded && (
+        <div className="flex items-center justify-end gap-2 px-3 py-1.5 border-t border-zinc-900 shrink-0 bg-zinc-900/30">
+          <button
+            onClick={handleApply}
+            disabled={isApplying}
+            className={cn(
+              "px-3 py-1 text-xs bg-zinc-900 hover:bg-zinc-700 border border-zinc-700 rounded-md text-zinc-300 flex items-center gap-1.5 transition-colors whitespace-nowrap",
+              isApplying && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            {isApplying ? (
+              <>
+                <div className="w-3 h-3 border-2 border-zinc-500/30 border-t-zinc-300 rounded-full animate-spin" />
+                <span>Applying...</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-3.5 h-3.5" />
+                <span>Apply{isRunning ? ' & Reload' : ''}</span>
+              </>
+            )}
           </button>
-        )}
-        <button
-          onClick={handleApply}
-          disabled={isApplying}
-          className={cn(
-            "px-4 py-2 text-sm font-medium text-white rounded-md transition-colors flex items-center gap-2",
-            isApplying ? "bg-blue-600/50 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-          )}
-        >
-          {isApplying ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              <span>Applying...</span>
-            </>
-          ) : (
-            <>
-              <Check className="w-4 h-4" />
-              <span>Apply {isRunning ? '& Reload Server' : ''}</span>
-            </>
-          )}
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   )
 

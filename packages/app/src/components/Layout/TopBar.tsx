@@ -154,10 +154,10 @@ export const TopBar: React.FC<TopBarProps> = ({
             <div className="flex items-center gap-0.5">
               <button
                 onClick={() => !workspace.isRunning && onToggleServer?.()}
-                disabled={workspace.isRunning || (variant === 'desktop' && !workspace.endpoints.length)}
+                disabled={workspace.isRunning}
                 className={cn(
                   "p-1.5 rounded transition-colors",
-                  workspace.isRunning || (variant === 'desktop' && !workspace.endpoints.length)
+                  workspace.isRunning
                     ? "text-zinc-600 cursor-default"
                     : "text-emerald-400 hover:bg-zinc-800 hover:text-emerald-300"
                 )}

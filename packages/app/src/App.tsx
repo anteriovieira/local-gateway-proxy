@@ -313,12 +313,6 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
       }
     } else {
       const activeEndpoints = ws.endpoints.filter((e) => e.enabled !== false)
-      if (variant === 'desktop' && activeEndpoints.length === 0) {
-        toast.error('Cannot start server', {
-          description: 'No enabled endpoints available',
-        })
-        return
-      }
       const result = await adapter.startServer({
         workspaceId: id,
         port: ws.port,
@@ -377,12 +371,6 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
       )
       await new Promise((resolve) => setTimeout(resolve, 500))
       const activeEndpoints = ws.endpoints.filter((e) => e.enabled !== false)
-      if (variant === 'desktop' && activeEndpoints.length === 0) {
-        toast.error('Cannot restart server', {
-          description: 'No enabled endpoints available',
-        })
-        return
-      }
       const result = await adapter.startServer({
         workspaceId: id,
         port: ws.port,
@@ -702,7 +690,7 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
           className="flex flex-col items-center bg-zinc-900 shrink-0 py-2 px-1.5 gap-1"
           style={{
             width: 50,
-            paddingTop: nativeWindowDrag && isMac ? 30 : 8,
+            paddingTop: nativeWindowDrag && isMac ? 38 : 8,
           }}
         >
           {navItems.map(({ id, icon, label }) => (
@@ -763,7 +751,7 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
       <div ref={contentRef} className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
         {/* Header bar */}
         <div
-          className="h-10 bg-zinc-900 flex items-center justify-between shrink-0 relative z-50 px-3"
+          className="h-10 bg-zinc-900 flex items-center justify-between shrink-0 relative z-50 pr-3 pl-10"
           style={{
             ...(nativeWindowDrag ? { WebkitAppRegion: 'drag' } : {}),
           }}
@@ -842,10 +830,10 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
                 <div className="flex items-center gap-0.5">
                   <button
                     onClick={() => !activeWorkspace.isRunning && toggleServer(activeWorkspace.id)}
-                    disabled={activeWorkspace.isRunning || (variant === 'desktop' && !activeWorkspace.endpoints.length)}
+                    disabled={activeWorkspace.isRunning}
                     className={cn(
                       "p-1.5 rounded transition-colors",
-                      activeWorkspace.isRunning || (variant === 'desktop' && !activeWorkspace.endpoints.length)
+                      activeWorkspace.isRunning
                         ? "text-zinc-600 cursor-default"
                         : "text-emerald-400 hover:bg-zinc-800 hover:text-emerald-300"
                     )}

@@ -207,11 +207,9 @@ export const Home: React.FC<HomeProps> = ({ workspaces, activeWorkspaceId, onSel
                           <div className="py-1">
                             <button
                               onClick={(e) => handleToggleServer(e, ws.id)}
-                              disabled={variant === 'desktop' && ws.endpoints.length === 0}
                               className={cn(
                                 "w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors",
-                                ws.isRunning ? "text-red-400 hover:bg-red-500/10" : "text-emerald-400 hover:bg-emerald-500/10",
-                                variant === 'desktop' && ws.endpoints.length === 0 && "opacity-50 cursor-not-allowed"
+                                ws.isRunning ? "text-red-400 hover:bg-red-500/10" : "text-emerald-400 hover:bg-emerald-500/10"
                               )}
                             >
                               {ws.isRunning ? (
