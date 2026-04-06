@@ -813,6 +813,9 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
               <>
                 {variant === 'desktop' && (
                   <div className="flex items-center gap-2 text-zinc-500 bg-zinc-900/50 px-2.5 py-1 rounded border border-zinc-800">
+                    <span className="text-xs font-mono text-zinc-500 tabular-nums w-[4.5ch]">
+                      {activeWorkspace.isRunning ? formatElapsed(elapsedMs) : ''}
+                    </span>
                     <span className="text-[10px] font-mono">Port</span>
                     <input
                       type="number"
@@ -821,11 +824,6 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
                       className="bg-transparent w-14 text-xs font-mono text-zinc-200 focus:outline-none text-center"
                     />
                   </div>
-                )}
-                {activeWorkspace.isRunning && (
-                  <span className="text-[11px] font-mono text-zinc-500 tabular-nums">
-                    {formatElapsed(elapsedMs)}
-                  </span>
                 )}
                 <div className="flex items-center gap-0.5">
                   <button
