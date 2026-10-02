@@ -2,10 +2,9 @@ import React, { useState, useMemo, useRef, useEffect } from 'react'
 import type { ApiLogEntry } from '@proxy-app/shared'
 import { matchPath } from '@proxy-app/shared'
 import type { EndpointDef } from '@proxy-app/shared'
-import { Search, X, Trash2, ListRestart, Split, Loader2, Plus, Info, FileJson, LayoutList, Server } from 'lucide-react'
+import { Search, X, Trash2, ListRestart, Split, Loader2, Info, FileJson, LayoutList, Timer, ChevronUp, ChevronDown } from 'lucide-react'
 import { CopyButton, ResizablePanelGroup, ResizablePanel, ResizableHandle, Tabs, TabsList, TabsTrigger, TabsContent, cn } from '@proxy-app/ui'
-import { highlight, languages } from 'prismjs'
-import 'prismjs/components/prism-json'
+import { LogDetailHeader, HeadersSection, RequestSection, BodyView } from './LogDetail'
 
 interface EnhancedLogPanelProps {
   apiLogs: ApiLogEntry[]
@@ -42,7 +41,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
         ep.method.toUpperCase() === (log.method || 'GET').toUpperCase()
     )
   const [selectedLog, setSelectedLog] = useState<ApiLogEntry | null>(null)
-  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'headers' | 'request' | 'response'>('overview')
+  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'headers' | 'request' | 'response' | 'timing'>('overview')
   const [internalSearchQuery, setInternalSearchQuery] = useState('')
   const [filters, setFilters] = useState<FilterType>({})
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -102,6 +101,41 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
     return filtered
   }, [apiLogs, searchQuery, filters])
 
+  // Logs in the order the list renders them (date groups, newest first), for prev/next navigation
+  const orderedLogs = useMemo(() => {
+    const visible = new Set(filteredLogs.map((log) => log.id))
+    return Object.values(groupedLogs).flat().filter((log) => visible.has(log.id))
+  }, [groupedLogs, filteredLogs])
+  const selectedIndex = selectedLog ? orderedLogs.findIndex((log) => log.id === selectedLog.id) : -1
+
+  const selectAdjacent = (delta: number) => {
+    const next = orderedLogs[selectedIndex + delta]
+    if (!next) return
+    keepTabOnSelectRef.current = true
+    setSelectedLog(next)
+    scrollContainerRef.current?.querySelector(`[data-log-id="${next.id}"]`)?.scrollIntoView({ block: 'nearest' })
+  }
+
+  useEffect(() => {
+    if (!selectedLog) return
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable || el.closest('[role="menu"]'))) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault()
+        selectAdjacent(-1)
+      } else if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault()
+        selectAdjacent(1)
+      } else if (e.key === 'Escape' && variant === 'extension') {
+        setSelectedLog(null)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
   const uniqueMethods = useMemo(() => Array.from(new Set(apiLogs.map((log) => log.method))), [apiLogs])
   const uniqueStatusCodes = useMemo(() => {
     const codes = apiLogs.map((log) => log.statusCode).filter((code): code is number => code !== undefined)
@@ -122,7 +156,13 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
     }
   }, [filteredLogs, selectedLog, variant])
 
+  // Prev/next navigation keeps the current tab so the same section can be compared across requests
+  const keepTabOnSelectRef = useRef(false)
   useEffect(() => {
+    if (keepTabOnSelectRef.current) {
+      keepTabOnSelectRef.current = false
+      return
+    }
     setActiveDetailTab('overview')
   }, [selectedLog?.id])
 
@@ -196,6 +236,72 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
     }
   }
 
+  const formatDuration = (ms: number) => (ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(2)}s`)
+
+  const renderTiming = (log: ApiLogEntry) => {
+    const start = new Date(log.timestamp)
+    const end = log.duration !== undefined ? new Date(start.getTime() + log.duration) : undefined
+    const barColor =
+      log.status === 'pending' ? 'bg-blue-500/60' : log.status === 'error' || (log.statusCode ?? 0) >= 400 ? 'bg-red-500/60' : 'bg-green-500/60'
+    const sameEndpoint = apiLogs
+      .filter((l) => l.method === log.method && l.path === log.path && l.duration !== undefined)
+      .map((l) => l.duration as number)
+    const min = sameEndpoint.length ? Math.min(...sameEndpoint) : 0
+    const max = sameEndpoint.length ? Math.max(...sameEndpoint) : 0
+    const avg = sameEndpoint.length ? sameEndpoint.reduce((a, b) => a + b, 0) / sameEndpoint.length : 0
+    const pct = (ms: number) => `${max > 0 ? Math.max(1, (ms / max) * 100) : 0}%`
+
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-zinc-500 w-32">Started:</span>
+          <span className="text-xs text-zinc-300">{formatDate(log.timestamp)}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-zinc-500 w-32">Finished:</span>
+          <span className="text-xs text-zinc-300">{end ? formatDate(end.toISOString()) : log.status === 'pending' ? 'Pending' : '—'}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-zinc-500 w-32">Duration:</span>
+          <span className="text-xs text-zinc-300">{log.duration !== undefined ? formatDuration(log.duration) : '—'}</span>
+        </div>
+        <div className="flex flex-col gap-2 p-3 rounded-md bg-zinc-900/50 border border-zinc-800">
+          <div className="text-xs font-medium text-zinc-400">Waterfall</div>
+          <div className="grid grid-cols-[96px_1fr_64px] items-center gap-3">
+            <span className="text-xs text-zinc-500">Waiting</span>
+            <div className="h-2 rounded bg-zinc-800 overflow-hidden">
+              <div className={cn('h-full rounded', barColor, log.status === 'pending' && 'animate-pulse')} style={{ width: log.duration !== undefined || log.status === 'pending' ? '100%' : '0%' }} />
+            </div>
+            <span className="text-xs text-zinc-300 text-right">{log.duration !== undefined ? formatDuration(log.duration) : '—'}</span>
+          </div>
+          <div className="grid grid-cols-[96px_1fr_64px] items-center gap-3 border-t border-zinc-800 pt-2">
+            <span className="text-xs text-zinc-400">Total</span>
+            <span />
+            <span className="text-xs text-zinc-200 text-right">{log.duration !== undefined ? formatDuration(log.duration) : '—'}</span>
+          </div>
+        </div>
+        {sameEndpoint.length > 1 && log.duration !== undefined && (
+          <div className="flex flex-col gap-2 p-3 rounded-md bg-zinc-900/50 border border-zinc-800">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-medium text-zinc-400">Compared to {log.method} {log.path}</div>
+              <span className="text-xs text-zinc-600">{sameEndpoint.length} requests</span>
+            </div>
+            <div className="relative h-2 rounded bg-zinc-800">
+              <div className="absolute inset-y-0 rounded bg-zinc-700" style={{ left: pct(min), width: `calc(${pct(max)} - ${pct(min)})` }} />
+              <div className="absolute -top-1 -bottom-1 w-px bg-zinc-400" style={{ left: pct(avg) }} title={`avg ${formatDuration(avg)}`} />
+              <div className={cn('absolute -top-1 w-2 h-4 -ml-1 rounded-sm', barColor.replace('/60', ''))} style={{ left: pct(log.duration) }} title="This request" />
+            </div>
+            <div className="flex justify-between text-xs text-zinc-500">
+              <span>min {formatDuration(min)}</span>
+              <span>avg {formatDuration(avg)}</span>
+              <span>max {formatDuration(max)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   const renderLogDetailContent = (log: ApiLogEntry) => {
     const queryParams = parseQueryParams(log.requestUrl || log.targetUrl || '')
     const hasRequestHeaders = log.requestHeaders && Object.keys(log.requestHeaders).length > 0
@@ -207,61 +313,18 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
       { id: 'headers' as const, label: 'Headers', icon: LayoutList, badge: hasHeaders ? (Object.keys(log.requestHeaders || {}).length + Object.keys(log.responseHeaders || {}).length) : 0 },
       { id: 'request' as const, label: 'Request', icon: FileJson, badge: log.requestBody ? 1 : 0 },
       { id: 'response' as const, label: 'Response', icon: FileJson, badge: log.responseBody ? 1 : 0 },
+      { id: 'timing' as const, label: 'Timing', icon: Timer },
     ]
-
-    const renderJsonBlock = (body: string) => {
-      try {
-        const parsed = JSON.parse(body)
-        return highlight(JSON.stringify(parsed, null, 2), languages.json, 'json')
-      } catch {
-        return body
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;')
-      }
-    }
-
-    const renderHeadersTable = (headers: Record<string, string>, title: string) => (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="text-xs font-medium text-zinc-400">{title}</div>
-          <CopyButton
-            text={Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join('\n')}
-            iconSize="w-3.5 h-3.5"
-            title={`Copy ${title.toLowerCase()}`}
-          />
-        </div>
-        <div className="overflow-x-auto rounded border border-zinc-700">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-zinc-700 bg-zinc-800/50">
-                <th className="px-3 py-2 text-left font-medium text-zinc-500">Name</th>
-                <th className="px-3 py-2 text-left font-medium text-zinc-500">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(headers).map(([key, value]) => (
-                <tr key={key} className="border-b border-zinc-800/50 last:border-0">
-                  <td className="px-3 py-2 font-mono text-zinc-300">{key}</td>
-                  <td className="px-3 py-2 font-mono text-zinc-400 break-all">{value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    )
 
     return (
       <div className="flex flex-col h-full">
-        <div className="group flex items-start gap-1 shrink-0 mb-3">
-          <p className="text-lg font-bold text-white break-words overflow-wrap-anywhere min-w-0">
-            {log.method} {log.path}
-          </p>
-          <CopyButton text={`${log.method} ${log.path}`} title="Copy method and path" iconSize="w-3.5 h-3.5" className="mt-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" />
-        </div>
+        <LogDetailHeader
+          log={log}
+          inDefinitions={isInDefinitions(log)}
+          onAddToDefinitions={onAddToDefinitions}
+          onCreateMock={onCreateMock}
+          onFilterEndpoint={setSearchQuery}
+        />
         <Tabs value={activeDetailTab} onValueChange={(v) => setActiveDetailTab(v as typeof activeDetailTab)} className="flex flex-col flex-1 min-h-0">
           <TabsList variant="segmented" className="shrink-0 overflow-x-auto">
             {tabs.map(({ id, label, icon: Icon, badge }) => (
@@ -416,79 +479,23 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                   </div>
                 </div>
               )}
-              {(onAddToDefinitions || onCreateMock) && (
-                <div className="flex items-center gap-2 pt-2">
-                  {onAddToDefinitions && !isInDefinitions(log) && (
-                    <button
-                      onClick={() => onAddToDefinitions(log)}
-                      className="flex items-center gap-2 px-3 py-2 text-xs bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 text-blue-300 rounded-md transition-colors"
-                      title="Add this request to definitions"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Add to Definitions</span>
-                    </button>
-                  )}
-                  {onCreateMock && log.responseBody && !log.isMock && !isInDefinitions(log) && (
-                    <button
-                      onClick={() => onCreateMock(log)}
-                      className="flex items-center gap-2 px-3 py-2 text-xs bg-violet-500/20 hover:bg-violet-500/30 border border-violet-500/30 text-violet-300 rounded-md transition-colors"
-                      title="Create a mock endpoint from this response"
-                    >
-                      <Server className="w-4 h-4" />
-                      <span>Create Mock</span>
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
             </TabsContent>
             <TabsContent value="headers" className="mt-0">
-            <div className="space-y-6">
-              {hasRequestHeaders ? renderHeadersTable(log.requestHeaders!, 'Request Headers') : null}
-              {hasResponseHeaders ? renderHeadersTable(log.responseHeaders!, 'Response Headers') : null}
-              {!hasHeaders && (
-                <p className="text-xs text-zinc-500 italic">No headers captured</p>
-              )}
-            </div>
+              <HeadersSection log={log} />
             </TabsContent>
             <TabsContent value="request" className="mt-0">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-zinc-300">Request Body</h3>
-                {log.requestBody && <CopyButton text={log.requestBody} title="Copy request body" />}
-              </div>
-              <div className="bg-zinc-900/80 border border-zinc-700 rounded-md p-4 overflow-auto max-h-[320px] custom-scrollbar">
-                {log.requestBody ? (
-                  <pre
-                    className="text-xs font-mono whitespace-pre-wrap language-json"
-                    dangerouslySetInnerHTML={{ __html: renderJsonBlock(log.requestBody) }}
-                  />
-                ) : (
-                  <p className="text-xs text-zinc-500 italic">No request body (GET requests typically have no body)</p>
-                )}
-              </div>
-            </div>
+              <RequestSection log={log} />
             </TabsContent>
             <TabsContent value="response" className="mt-0">
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-zinc-300">Response Body</h3>
-                {log.responseBody && <CopyButton text={log.responseBody} title="Copy response body" />}
-              </div>
-              <div className="bg-zinc-900/80 border border-zinc-700 rounded-md p-4 overflow-auto max-h-[320px] custom-scrollbar">
-                {(log.status === 'completed' || log.status === 'error') && log.responseBody ? (
-                  <pre
-                    className="text-xs font-mono whitespace-pre-wrap language-json"
-                    dangerouslySetInnerHTML={{ __html: renderJsonBlock(log.responseBody) }}
-                  />
-                ) : (
-                  <p className="text-xs text-zinc-500 italic">
-                    {variant === 'extension'
-                      ? 'Response body not captured (may appear shortly if captured from page)'
-                      : 'No response body captured'}
-                  </p>
-                )}
-              </div>
+              <BodyView
+                title="Response Body"
+                body={(log.status === 'completed' || log.status === 'error') ? log.responseBody : undefined}
+                empty={variant === 'extension'
+                  ? 'Response body not captured (may appear shortly if captured from page)'
+                  : 'No response body captured'}
+              />
               {log.captureTrace && log.captureTrace.length > 0 && (
                 <div className="space-y-2 pt-2">
                   <div className="flex items-center justify-between">
@@ -508,11 +515,38 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
               )}
             </div>
             </TabsContent>
+            <TabsContent value="timing" className="mt-0">
+              {renderTiming(log)}
+            </TabsContent>
           </div>
         </Tabs>
       </div>
     )
   }
+
+  const detailsNavigator = selectedLog && selectedIndex >= 0 && (
+    <div className="flex items-center gap-1">
+      <span className="text-xs text-zinc-600 tabular-nums mr-1">
+        {selectedIndex + 1} / {orderedLogs.length}
+      </span>
+      <button
+        onClick={() => selectAdjacent(-1)}
+        disabled={selectedIndex <= 0}
+        className="p-1.5 hover:bg-zinc-800 rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+        title="Previous request (↑ / k)"
+      >
+        <ChevronUp className="w-4 h-4 text-zinc-400" />
+      </button>
+      <button
+        onClick={() => selectAdjacent(1)}
+        disabled={selectedIndex >= orderedLogs.length - 1}
+        className="p-1.5 hover:bg-zinc-800 rounded transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+        title="Next request (↓ / j)"
+      >
+        <ChevronDown className="w-4 h-4 text-zinc-400" />
+      </button>
+    </div>
+  )
 
   const toolbar = (
     <div className="border-b border-zinc-900 bg-zinc-900/30 p-2 flex items-center gap-2 shrink-0">
@@ -576,6 +610,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
               {groupLogs.map((log) => (
                 <button
                   key={log.id}
+                  data-log-id={log.id}
                   onClick={() => setSelectedLog(log)}
                   className={cn(
                     "w-full px-4 py-2.5 text-left hover:bg-zinc-900/50 transition-colors border-l-2",
@@ -634,9 +669,13 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
             <div className="absolute inset-y-0 left-0 w-full bg-zinc-950 shadow-xl z-20 flex flex-col">
               <div className="flex items-center justify-between h-10 px-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
                 <span className="text-xs font-medium text-zinc-400">Log Details</span>
-                  <button onClick={() => setSelectedLog(null)} className="p-1.5 hover:bg-zinc-800 rounded transition-colors" title="Close">
+                <div className="flex items-center gap-1">
+                  {detailsNavigator}
+                  <div className="w-px h-4 bg-zinc-800 mx-1" />
+                  <button onClick={() => setSelectedLog(null)} className="p-1.5 hover:bg-zinc-800 rounded transition-colors" title="Close (Esc)">
                     <X className="w-4 h-4 text-zinc-400" />
                   </button>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar">{renderLogDetailContent(selectedLog)}</div>
             </div>
@@ -662,6 +701,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
           <div className="h-full min-h-0 overflow-y-auto bg-zinc-950 custom-scrollbar flex flex-col">
             <div className="flex items-center justify-between h-10 px-3 bg-zinc-900/30 border-b border-zinc-900 sticky top-0 shrink-0">
               <span className="text-xs font-medium text-zinc-400">Log Details</span>
+              {detailsNavigator}
             </div>
             {selectedLog ? (
               <div className="flex-1 min-h-0 p-6 space-y-6">{renderLogDetailContent(selectedLog)}</div>

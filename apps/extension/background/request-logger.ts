@@ -108,6 +108,15 @@ function decodeRequestBody(details: chrome.webRequest.WebRequestBodyDetails): st
  * Initialize webRequest listeners for logging intercepted requests.
  * Only captures requests whose type is in the workspace's captureResourceTypes (default: xmlhttprequest).
  */
+function headersToRecord(headers?: chrome.webRequest.HttpHeader[]): Record<string, string> | undefined {
+    if (!headers || headers.length === 0) return undefined
+    const record: Record<string, string> = {}
+    for (const h of headers) {
+        record[h.name] = h.value ?? (h.binaryValue ? '<binary>' : '')
+    }
+    return record
+}
+
 export function initRequestLogger(): void {
     // Log when a request starts
     chrome.webRequest.onBeforeRequest.addListener(
@@ -227,6 +236,22 @@ export function initRequestLogger(): void {
         ['requestBody']
     )
 
+    // Record request headers as sent (after other extensions/DNR rules modified them)
+    chrome.webRequest.onSendHeaders.addListener(
+        (details) => {
+            const pending = pendingRequests.get(details.requestId)
+            if (!pending) return
+            const requestHeaders = headersToRecord(details.requestHeaders)
+            if (!requestHeaders) return
+            const logIndex = logs.findIndex(l => l.id === pending.logId)
+            if (logIndex < 0) return
+            logs[logIndex] = { ...logs[logIndex], requestHeaders }
+            broadcastLog(logs[logIndex], true)
+        },
+        { urls: ['<all_urls>'] },
+        ['requestHeaders', 'extraHeaders']
+    )
+
     // Log when a request completes
     chrome.webRequest.onCompleted.addListener(
         (details) => {
@@ -241,7 +266,8 @@ export function initRequestLogger(): void {
                         ...logs[logIndex],
                         status: 'completed',
                         statusCode: details.statusCode,
-                        duration
+                        duration,
+                        ...(details.responseHeaders && { responseHeaders: headersToRecord(details.responseHeaders) }),
                     },
                     `webRequest: completed ${details.statusCode} in ${duration}ms` +
                         (logs[logIndex].responseBody ? ' (body already captured)' : ' (waiting for body from page)')
@@ -251,7 +277,8 @@ export function initRequestLogger(): void {
 
             pendingRequests.delete(details.requestId)
         },
-        { urls: ['<all_urls>'] }
+        { urls: ['<all_urls>'] },
+        ['responseHeaders', 'extraHeaders']
     )
 
     // Log when a request errors

@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Scan packages for Tailwind classes */
+@source "../../../../../packages/app/**/*.{js,ts,jsx,tsx}";
+@source "../../../../../packages/ui/**/*.{js,ts,jsx,tsx}";
+
 @theme {
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
