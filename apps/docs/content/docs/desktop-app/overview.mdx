@@ -1,0 +1,73 @@
+---
+title: Desktop App Overview
+description: How the Proxy App desktop application works.
+---
+
+The desktop version of Proxy App is an Electron application that runs a local HTTP proxy server. External clients — Postman, curl, your frontend app, or any HTTP client — send requests to `localhost`, and the proxy forwards them to the configured backend.
+
+## Architecture
+
+The desktop app has three layers:
+
+### Electron Main Process
+
+The main process manages the application lifecycle and runs the proxy server logic. It:
+
+- Starts and stops Express servers for each workspace
+- Registers routes from the parsed endpoint configuration
+- Resolves stage variables and path parameters in URI templates
+- Uses `http-proxy` to forward requests to target backends
+- Captures response data for logging
+- Communicates with the renderer via IPC (Inter-Process Communication)
+
+### Electron Renderer (React UI)
+
+The renderer is the same shared React UI used by the Chrome Extension. It provides:
+
+- Workspace management (create, rename, delete, switch)
+- JSON config editor with auto-parsing
+- Endpoint list with enable/disable toggles
+- Variable mapping table
+- Request log viewer with detail inspection
+
+### Express Proxy Server
+
+Each workspace runs an independent Express server on its own port. When you start a workspace:
+
+1. Express registers a route for each enabled endpoint
+2. Incoming requests are matched by HTTP method and path pattern
+3. Matched requests are proxied via `http-proxy` to the resolved target URL
+4. A bypass middleware catches unmatched requests (when bypass is enabled)
+5. Logs are sent to the UI in real time via IPC
+
+## Request Flow
+
+```
+Client sends GET localhost:3000/users/1
+    → Express matches /users/{id} endpoint
+    → Extracts path param: id = 1
+    → Resolves URI template with variables
+    → http-proxy forwards to target URL
+    → Response returned to client
+    → Log entry sent to UI via IPC
+```
+
+## Key Features
+
+| Feature | Details |
+|---------|---------|
+| **Multi-workspace** | Run multiple servers on different ports simultaneously |
+| **Port configuration** | Each workspace has its own configurable port |
+| **Bypass mode** | Forward unmatched requests to a fallback URL |
+| **Mock responses** | Return static JSON without hitting a backend |
+| **Real-time logs** | Server events and API request details streamed to the UI |
+| **Persistent state** | Workspaces saved to localStorage, restored on launch |
+
+## When to Use the Desktop App
+
+The desktop app is ideal when:
+
+- You need a proxy that works with any HTTP client (not just the browser)
+- You're testing APIs with tools like Postman or curl
+- You want to run multiple proxy servers on different ports simultaneously
+- You're working in an environment where browser extensions are restricted

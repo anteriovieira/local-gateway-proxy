@@ -1,0 +1,4 @@
+{
+  "title": "Chrome Extension",
+  "pages": ["overview", "installation", "permissions"]
+}

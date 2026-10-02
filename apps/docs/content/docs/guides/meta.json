@@ -1,0 +1,13 @@
+{
+  "title": "Guides",
+  "pages": [
+    "workspaces",
+    "endpoints",
+    "mock-responses",
+    "mock-database",
+    "stage-variables",
+    "path-parameters",
+    "request-logging",
+    "json-config"
+  ]
+}

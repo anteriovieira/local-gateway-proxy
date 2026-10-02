@@ -140,6 +140,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
           updatedLog.error !== selectedLog.error ||
           updatedLog.requestUrl !== selectedLog.requestUrl ||
           updatedLog.targetUrl !== selectedLog.targetUrl ||
+          updatedLog.captureTrace?.length !== selectedLog.captureTrace?.length ||
           JSON.stringify(updatedLog.requestHeaders) !== JSON.stringify(selectedLog.requestHeaders) ||
           JSON.stringify(updatedLog.responseHeaders) !== JSON.stringify(selectedLog.responseHeaders)
         if (hasChanged) setSelectedLog(updatedLog)
@@ -224,7 +225,14 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
     const renderHeadersTable = (headers: Record<string, string>, title: string) => (
       <div className="space-y-2">
-        <div className="text-xs font-medium text-zinc-400">{title}</div>
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-medium text-zinc-400">{title}</div>
+          <CopyButton
+            text={Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join('\n')}
+            iconSize="w-3.5 h-3.5"
+            title={`Copy ${title.toLowerCase()}`}
+          />
+        </div>
         <div className="overflow-x-auto rounded border border-zinc-700">
           <table className="w-full text-xs">
             <thead>
@@ -248,13 +256,16 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
 
     return (
       <div className="flex flex-col h-full">
-        <p className="text-lg font-bold text-white break-words overflow-wrap-anywhere shrink-0 mb-3">
-          {log.method} {log.path}
-        </p>
+        <div className="group flex items-start gap-1 shrink-0 mb-3">
+          <p className="text-lg font-bold text-white break-words overflow-wrap-anywhere min-w-0">
+            {log.method} {log.path}
+          </p>
+          <CopyButton text={`${log.method} ${log.path}`} title="Copy method and path" iconSize="w-3.5 h-3.5" className="mt-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" />
+        </div>
         <Tabs value={activeDetailTab} onValueChange={(v) => setActiveDetailTab(v as typeof activeDetailTab)} className="flex flex-col flex-1 min-h-0">
-          <TabsList variant="pill" className="justify-start gap-2 shrink-0 overflow-x-auto flex-wrap">
+          <TabsList variant="segmented" className="shrink-0 overflow-x-auto">
             {tabs.map(({ id, label, icon: Icon, badge }) => (
-              <TabsTrigger key={id} value={id} variant="pill" className="gap-1.5 text-xs whitespace-nowrap">
+              <TabsTrigger key={id} value={id} variant="segmented" className="whitespace-nowrap">
                 <Icon className="w-3.5 h-3.5 shrink-0" />
                 {label}
                 {badge !== undefined && badge > 0 && (
@@ -282,7 +293,10 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
               </div>
               {log.status === 'error' && log.error && (
                 <div className="flex flex-col gap-1 p-3 rounded-md bg-red-500/10 border border-red-500/30">
-                  <span className="text-xs font-medium text-red-400">Error details</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-red-400">Error details</span>
+                    <CopyButton text={log.error} iconSize="w-3.5 h-3.5" className="p-1" title="Copy error details" />
+                  </div>
                   <span className="text-xs text-zinc-300 font-mono break-all">{log.error}</span>
                 </div>
               )}
@@ -297,18 +311,22 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                 <span className="text-xs text-zinc-300">{formatDate(log.timestamp)}</span>
               </div>
               {log.ipAddress && (
-                <div className="flex items-center gap-3">
+                <div className="group flex items-center gap-3">
                   <span className="text-xs text-zinc-500 w-32">IP Address:</span>
                   <span className="text-xs text-zinc-300 font-mono">{log.ipAddress}</span>
+                  <CopyButton text={log.ipAddress} iconSize="w-3 h-3" className="p-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="Copy ip address" />
                 </div>
               )}
               {(log.requestUrl || log.targetUrl || log.isBypass || log.isMock) && (
                 <div className="flex flex-col gap-2 p-3 rounded-md bg-zinc-900/50 border border-zinc-800">
                   <div className="text-xs font-medium text-zinc-400">proxy / redirect</div>
                   {log.requestUrl && (
-                    <div className="flex flex-col gap-0.5">
+                    <div className="group flex flex-col gap-0.5">
                       <span className="text-xs text-zinc-500">Original:</span>
-                      <span className="text-xs text-zinc-300 font-mono break-all">{log.requestUrl}</span>
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs text-zinc-300 font-mono break-all">{log.requestUrl}</span>
+                        <CopyButton text={log.requestUrl} iconSize="w-3 h-3" className="p-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="Copy original URL" />
+                      </div>
                     </div>
                   )}
                   {log.isMock ? (
@@ -317,20 +335,24 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                       <span className="text-xs text-violet-400">Mock response</span>
                     </div>
                   ) : log.isBypass ? (
-                    <div className="flex items-center gap-2">
+                    <div className="group flex items-center gap-2">
                       <Split className="w-3.5 h-3.5 text-amber-500 rotate-90" />
                       <span className="text-xs text-amber-400">Bypass request</span>
                       {log.targetUrl && (
                         <>
                           <span className="text-xs text-zinc-500"> to </span>
                           <span className="text-xs text-zinc-300 font-mono break-all">{log.targetUrl}</span>
+                          <CopyButton text={log.targetUrl} iconSize="w-3 h-3" className="p-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="Copy target URL" />
                         </>
                       )}
                     </div>
                   ) : log.targetUrl ? (
-                    <div className="flex flex-col gap-0.5">
+                    <div className="group flex flex-col gap-0.5">
                       <span className="text-xs text-zinc-500">Proxied to:</span>
-                      <span className="text-xs text-zinc-300 font-mono break-all">{log.targetUrl}</span>
+                      <div className="flex items-start gap-1">
+                        <span className="text-xs text-zinc-300 font-mono break-all">{log.targetUrl}</span>
+                        <CopyButton text={log.targetUrl} iconSize="w-3 h-3" className="p-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="Copy target URL" />
+                      </div>
                     </div>
                   ) : null}
                 </div>
@@ -344,26 +366,36 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                 </div>
               )}
               {log.userAgent && (
-                <div className="flex items-center gap-3">
+                <div className="group flex items-center gap-3">
                   <span className="text-xs text-zinc-500 w-32 min-w-32 whitespace-nowrap inline-block">User Agent:</span>
                   <span className="text-xs text-zinc-300 font-mono break-all inline-block">{log.userAgent}</span>
+                  <CopyButton text={log.userAgent} iconSize="w-3 h-3" className="p-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="Copy user agent" />
                 </div>
               )}
               {log.apiKey && (
-                <div className="flex items-center gap-3">
+                <div className="group flex items-center gap-3">
                   <span className="text-xs text-zinc-500 w-32 min-w-32 whitespace-nowrap inline-block">API Key:</span>
                   <span className="text-xs text-zinc-300 font-mono break-all inline-block">{log.apiKey}</span>
+                  <CopyButton text={log.apiKey} iconSize="w-3 h-3" className="p-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="Copy API key" />
                 </div>
               )}
               {log.idempotencyKey && (
-                <div className="flex items-center gap-3">
+                <div className="group flex items-center gap-3">
                   <span className="text-xs text-zinc-500 w-32">Idempotency Key:</span>
                   <span className="text-xs text-zinc-300 font-mono break-all">{log.idempotencyKey}</span>
+                  <CopyButton text={log.idempotencyKey} iconSize="w-3 h-3" className="p-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="Copy idempotency key" />
                 </div>
               )}
               {queryParams.length > 0 && (
                 <div className="space-y-2">
-                  <div className="text-xs font-medium text-zinc-400">Query Parameters</div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-medium text-zinc-400">Query Parameters</div>
+                    <CopyButton
+                      text={queryParams.map(([key, value]) => `${key}=${value}`).join('\n')}
+                      iconSize="w-3.5 h-3.5"
+                      title="Copy query parameters"
+                    />
+                  </div>
                   <div className="overflow-x-auto rounded border border-zinc-700">
                     <table className="w-full text-xs">
                       <thead>
@@ -457,6 +489,23 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                   </p>
                 )}
               </div>
+              {log.captureTrace && log.captureTrace.length > 0 && (
+                <div className="space-y-2 pt-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-zinc-300">Capture Trace</h3>
+                    <CopyButton text={log.captureTrace.join('\n')} title="Copy capture trace" />
+                  </div>
+                  <div className="bg-zinc-900/80 border border-zinc-700 rounded-md p-3 overflow-auto max-h-[240px] custom-scrollbar">
+                    <ol className="space-y-1">
+                      {log.captureTrace.map((step, i) => (
+                        <li key={i} className="text-xs font-mono text-zinc-400 break-all">
+                          {step}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+              )}
             </div>
             </TabsContent>
           </div>

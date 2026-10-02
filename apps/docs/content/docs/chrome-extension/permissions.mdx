@@ -1,0 +1,52 @@
+---
+title: Permissions
+description: What permissions the Proxy App Chrome Extension requires and why.
+---
+
+Proxy App requests only the permissions necessary to intercept and forward HTTP requests. Here's a detailed explanation of each permission.
+
+## Permission Breakdown
+
+### `sidePanel`
+
+Renders the extension's main UI in Chrome's side panel. All workspace management, configuration, and request log inspection happen in the side panel.
+
+### `storage`
+
+Persists workspace configurations, endpoint rules, stage variables, and proxy state across browser sessions. Without this, all settings would be lost when the browser closes.
+
+### `scripting`
+
+Injects the fetch-patching script into the main world of the active page. Content scripts run in an isolated world and cannot access the page's `fetch` — `chrome.scripting.executeScript` with `world: "MAIN"` is the only way to intercept fetch calls on the page.
+
+### `webRequest`
+
+Observes network request activity for logging and to match requests against configured endpoint rules.
+
+### `declarativeNetRequestWithHostAccess`
+
+Adds and removes dynamic redirect rules when the extension is used in redirect mode. Rules are created only while the proxy is active and removed immediately when deactivated.
+
+### `declarativeNetRequestFeedback`
+
+Reads the result of `declarativeNetRequest` rules for logging and diagnostics, so the extension can report whether redirect rules are being applied correctly.
+
+### `activeTab`
+
+Identifies the currently active tab so the fetch-patching script can be injected into the correct page when you activate the proxy.
+
+### `tabs`
+
+Queries tab information (tab ID, URL) needed to inject scripts into the correct tab and associate request logs with the originating tab.
+
+### `host_permissions: <all_urls>`
+
+The extension must be able to proxy requests to **any** URL because developers target arbitrary backend APIs that aren't known in advance. Restricting host permissions to a fixed list of origins would make the extension unusable for most workflows. This permission is used solely to proxy requests as configured by the developer.
+
+## Privacy
+
+<Callout type="info">
+Proxy App does **not** collect, store, transmit, or share any personal data or browsing data. All configuration and request logs are stored locally in your browser and are never sent to any external server.
+</Callout>
+
+See the full [privacy policy](https://chromewebstore.google.com/detail/proxy-app/gdhjkolpmofllkogghodpnnmjajnbilg) on the Chrome Web Store listing.

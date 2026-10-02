@@ -1,0 +1,118 @@
+---
+title: Mock Responses
+description: Setting up mock responses with status codes, headers, body, and delays.
+---
+
+Mock endpoints return a static response without making any network request to a backend. This is useful for prototyping, testing error scenarios, or working when the backend isn't available.
+
+## Defining a Mock Endpoint
+
+In your JSON config, set the integration type to `"mock"` and provide a response template:
+
+```json
+{
+  "paths": {
+    "/health": {
+      "get": {
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "responses": {
+            "default": {
+              "responseTemplates": {
+                "application/json": "{\"status\": \"ok\", \"version\": \"1.0.0\"}"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+When a `GET /health` request is made, Proxy App returns the mock response directly — no backend call is made.
+
+## Mock Response Properties
+
+You can configure these properties for each mock endpoint:
+
+### Response Body
+
+The JSON body to return. Defined in the config under `responseTemplates["application/json"]`:
+
+```json
+"responseTemplates": {
+  "application/json": "{\"users\": [{\"id\": 1, \"name\": \"Alice\"}]}"
+}
+```
+
+### Status Code
+
+Set the HTTP status code (default: 200). In the UI, you can change this per endpoint:
+
+- `200` — Success
+- `201` — Created
+- `400` — Bad Request
+- `404` — Not Found
+- `500` — Internal Server Error
+
+### Response Headers
+
+Add custom response headers as key-value pairs. Common use cases:
+
+- `Content-Type: application/json`
+- `X-Request-Id: mock-123`
+- `Cache-Control: no-cache`
+
+### Simulated Delay
+
+Add a delay (in milliseconds) before the mock response is returned. This simulates real network latency:
+
+- `0` — Instant response (default)
+- `200` — Fast API response
+- `1000` — Simulating slow network
+- `5000` — Testing timeout handling
+
+## Editing Mocks in the UI
+
+After parsing the config, mock endpoints appear in the **Endpoints** tab with a "Mock" badge. You can edit mock properties directly in the UI:
+
+1. Click on a mock endpoint to expand its details
+2. Edit the response body, status code, headers, and delay
+3. Changes take effect immediately (extension) or after server restart (desktop)
+
+## Example: Error Simulation
+
+Mock a `500 Internal Server Error` to test your app's error handling:
+
+```json
+{
+  "paths": {
+    "/api/checkout": {
+      "post": {
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "responses": {
+            "default": {
+              "responseTemplates": {
+                "application/json": "{\"error\": \"Internal server error\", \"code\": \"CHECKOUT_FAILED\"}"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Then set the status code to `500` in the UI.
+
+## Mock vs Proxy
+
+| Aspect | Mock | Proxy |
+|--------|------|-------|
+| Network request | None | Forwards to target URL |
+| Response source | Static config | Backend server |
+| Use case | Prototyping, testing | Real API proxying |
+| Variable resolution | Not needed | Resolves `${stageVariables}` and `{params}` |

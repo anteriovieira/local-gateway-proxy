@@ -6,6 +6,12 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
+      "js": ["content/fetch-patch-main.ts"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["<all_urls>"],
       "js": ["content/response-capture.ts"],
       "run_at": "document_start"
     }

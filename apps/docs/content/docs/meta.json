@@ -1,0 +1,12 @@
+{
+  "title": "Documentation",
+  "root": true,
+  "pages": [
+    "index",
+    "getting-started",
+    "chrome-extension",
+    "desktop-app",
+    "guides",
+    "configuration"
+  ]
+}

@@ -1,0 +1,93 @@
+---
+title: Request Logging
+description: Monitoring proxied requests and inspecting details.
+---
+
+Proxy App logs every proxied and mocked request with full details. The **Logs** tab in each workspace provides a real-time view of all HTTP traffic flowing through the proxy.
+
+## Log Types
+
+### Server Logs
+
+General server events displayed as timestamped messages:
+
+- Server started / stopped
+- Endpoint registration
+- Error messages
+- Configuration changes
+
+### API Logs
+
+Per-request details with rich metadata:
+
+| Field | Description |
+|-------|-------------|
+| `method` | HTTP method (GET, POST, etc.) |
+| `path` | Request path |
+| `statusCode` | Response status code |
+| `duration` | Round-trip time in milliseconds |
+| `targetUrl` | Resolved target URL |
+| `requestUrl` | Original request URL |
+| `requestHeaders` | Request headers (key-value) |
+| `requestBody` | Request body (POST, PUT, PATCH) |
+| `responseHeaders` | Response headers (key-value) |
+| `responseBody` | Response body |
+| `isBypass` | Whether the request was forwarded via bypass |
+| `isMock` | Whether a mock response was returned |
+
+## Request Lifecycle
+
+Each API request goes through two log states:
+
+### Pending
+
+As soon as a request is received, a log entry is created with `status: "pending"`. This lets you see in-flight requests in the UI before the backend responds.
+
+### Completed / Error
+
+When the response arrives (or an error occurs), the log entry is updated with:
+
+- Final status code
+- Response duration
+- Response headers and body
+- Error details (if any)
+
+## Inspecting a Request
+
+Click on any log entry in the **Logs** tab to expand its details. You can inspect:
+
+- **Request** — method, path, headers, body
+- **Response** — status code, headers, body
+- **Timing** — total duration from request to response
+- **Target** — the resolved URL the request was proxied to
+
+## Filtering
+
+The Chrome Extension provides additional filtering options:
+
+### Resource Types
+
+Control which types of network requests are captured with `captureResourceTypes`:
+
+- `xmlhttprequest` — API calls via `XMLHttpRequest` and `fetch` (default)
+- `script`, `stylesheet`, `image`, etc.
+
+### URL Filter
+
+Set `urlMustContain` on a workspace to only capture requests whose URL contains a specific string. Leave empty to capture all requests.
+
+Example: Set `urlMustContain` to `/api/` to only log API requests and ignore static asset requests.
+
+## Desktop vs Extension Logging
+
+| Feature | Desktop | Extension |
+|---------|---------|-----------|
+| Transport | IPC (main → renderer) | Service worker → side panel |
+| Capture | All requests to the Express server | Matched requests + optionally all network traffic |
+| Resource type filter | N/A | Configurable |
+| URL filter | N/A | Configurable (`urlMustContain`) |
+| Response body | Decoded (gzip, deflate, br) | As received |
+
+## Log Persistence
+
+Logs are stored in memory and cleared when the workspace is stopped or the app is closed. They are **not** persisted across sessions.

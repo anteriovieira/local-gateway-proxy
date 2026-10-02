@@ -1,17 +1,27 @@
 /**
- * Content script that injects a main-world script to patch the page's fetch/XHR.
- * Content scripts run in an isolated world - the page's fetch is separate.
- * We use chrome.scripting.executeScript (world: MAIN) to inject - bypasses CSP.
+ * Isolated-world content script that bridges the MAIN-world fetch/XHR patch and the background.
+ * The patch itself is installed by content/fetch-patch-main.ts; if it's missing, we ask the
+ * background to inject it with chrome.scripting.executeScript (world: MAIN).
  * Page context cannot use chrome.* - we use postMessage for communication.
  */
 const PREFIX = '__proxy_app_'
 
+let warnedInvalidated = false
+
 function safeSendMessage(message: unknown): Promise<unknown> {
   try {
-    return chrome.runtime.sendMessage(message).catch(() => {})
-  } catch {
+    return chrome.runtime.sendMessage(message).catch(warnInvalidated)
+  } catch (err) {
+    warnInvalidated(err)
     return Promise.resolve()
   }
+}
+
+/** Orphaned after an extension reload: nothing reaches the background until the page is reloaded */
+function warnInvalidated(err: unknown): void {
+  if (warnedInvalidated) return
+  warnedInvalidated = true
+  console.warn('[proxy-app] cannot reach extension background — reload this page to capture response bodies.', err)
 }
 
 function main(): void {
@@ -32,11 +42,24 @@ function main(): void {
     }
     if (e.data.type === PREFIX + 'response-body') {
       safeSendMessage({ type: 'response-body', payload: e.data.payload })
+      return
+    }
+    if (e.data.type === PREFIX + 'response-body-skip') {
+      safeSendMessage({ type: 'response-body-skip', payload: e.data.payload })
     }
   })
 
-  // Request background to inject into main world (bypasses CSP that blocks inline scripts)
-  safeSendMessage({ type: 'inject-fetch-patch', payload: { prefix: PREFIX } })
+  // Prerendered documents have no tab id yet; report once the page is shown in a tab
+  if ((document as Document & { prerendering?: boolean }).prerendering) {
+    document.addEventListener('prerenderingchange', reportPatchStatus, { once: true })
+  } else {
+    reportPatchStatus()
+  }
+}
+
+function reportPatchStatus(): void {
+  const patched = document.documentElement?.getAttribute('data-proxy-app-patched') === '1'
+  safeSendMessage({ type: 'inject-fetch-patch', payload: { prefix: PREFIX, alreadyPatched: patched } })
 }
 
 // Run immediately on load; wrapper calls default export as "mount" - export no-op so it doesn't undo our patches

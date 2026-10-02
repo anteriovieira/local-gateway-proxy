@@ -33,6 +33,7 @@ const tabsListVariants = cva(
         borderedVertical: "h-auto flex flex-col gap-1 bg-transparent",
         pill: "gap-2 bg-transparent",
         pillVertical: "flex flex-col gap-2 bg-transparent",
+        segmented: "h-auto w-full gap-1 rounded-lg border border-zinc-800 bg-zinc-950 p-1",
       },
     },
     defaultVariants: {
@@ -72,6 +73,8 @@ const tabsTriggerVariants = cva(
           "rounded-lg px-4 py-2 text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-300 data-[state=active]:bg-zinc-700 data-[state=active]:text-white data-[state=active]:shadow-sm",
         pillVertical:
           "w-full justify-start gap-2 rounded-lg px-4 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-300 data-[state=active]:bg-zinc-700 data-[state=active]:text-white data-[state=active]:shadow-sm",
+        segmented:
+          "flex-1 gap-2 rounded-md border border-transparent px-3 py-1.5 text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-300 data-[state=active]:border-zinc-700/80 data-[state=active]:bg-zinc-800 data-[state=active]:text-white data-[state=active]:shadow-sm",
       },
     },
     defaultVariants: {

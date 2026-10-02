@@ -1,0 +1,65 @@
+---
+title: Chrome Extension Overview
+description: How the Proxy App Chrome Extension works under the hood.
+---
+
+The Chrome Extension version of Proxy App runs entirely inside your browser. It intercepts outgoing HTTP requests from the active web page and either proxies them to a target URL or returns a mock response — all without a local server.
+
+## Architecture
+
+The extension is built with three main components:
+
+### Side Panel UI
+
+The main interface runs in Chrome's side panel. It's a React application (the same shared UI as the desktop app) where you manage workspaces, configure endpoints, set variables, and inspect request logs.
+
+### Background Service Worker
+
+The service worker is the core engine. It:
+
+- Maintains workspace state and proxy rules
+- Coordinates with the scripting API to inject the fetch interceptor
+- Processes proxied requests from the extension's background context (bypassing CORS)
+- Manages the mock database for CRUD operations
+- Records request logs and broadcasts them to the side panel
+
+### Fetch Interceptor (Content Script)
+
+When you activate a workspace, the extension injects a script into the **main world** of the active page using `chrome.scripting.executeScript`. This script patches the page's `fetch` function to:
+
+1. Match outgoing requests against your configured endpoint rules
+2. Forward matching requests to the service worker for proxying
+3. Return the proxied response to the page transparently
+4. Pass through unmatched requests without modification
+
+## Request Flow
+
+```
+Page calls fetch('/api/users/1')
+    → Interceptor matches /api/users/{id} endpoint
+    → Request forwarded to service worker
+    → Service worker resolves target URL with variables
+    → Service worker makes request to target (bypassing CORS)
+    → Response returned to page
+    → Log entry recorded
+```
+
+## Key Differences from Desktop
+
+| Feature | Chrome Extension | Desktop App |
+|---------|-----------------|-------------|
+| Proxy mechanism | Fetch interception | Express HTTP server |
+| CORS bypass | Automatic (background context) | Automatic (server-side) |
+| Client support | Active browser tab only | Any HTTP client |
+| Mock database | Supported | Not available |
+| Local server | Not needed | Required (runs automatically) |
+| Port configuration | Not applicable | Configurable per workspace |
+
+## When to Use the Extension
+
+The Chrome Extension is ideal when:
+
+- You're developing a frontend app and want to redirect API calls without changing code
+- You need CORS bypass without configuring proxy headers on the server
+- You want to mock API responses directly in the browser
+- You prefer a lightweight tool that doesn't require a running server process

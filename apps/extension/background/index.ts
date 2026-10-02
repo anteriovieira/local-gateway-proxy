@@ -1,5 +1,5 @@
 import { activateProxy, deactivateProxy, getProxyState, updateProxyEndpoints, updateProxyUrlFilter, restoreProxyState } from './proxy-engine'
-import { initRequestLogger, getLogs, clearLogs, updateLogWithResponseBody } from './request-logger'
+import { initRequestLogger, getLogs, clearLogs, updateLogWithResponseBody, setTabPatchStatus, tracePageEvent } from './request-logger'
 import { handleProxyFetch, initMockDb, destroyMockDb, getMockDb, restoreMockDb } from './proxy-fetch'
 import { injectFetchPatch } from './inject-fetch-patch'
 import { MAX_RESPONSE_BODY_SIZE, PROXY_APP_PREFIX } from './constants'
@@ -13,15 +13,42 @@ const stateReady = Promise.all([restoreProxyState(), restoreMockDb()]).then(() =
   updateBadge(state?.isActive ? 1 : 0)
 })
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(({ reason }) => {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error)
+  if (reason === 'install' || reason === 'update') reinjectContentScripts()
 })
+
+/**
+ * Chrome doesn't re-inject content scripts into open tabs after an install/update/reload, so the
+ * old content script is orphaned and page-captured response bodies are silently dropped. The
+ * main-world patch survives (guarded) and keeps posting messages, so a fresh content script picks them up.
+ */
+async function reinjectContentScripts(): Promise<void> {
+  // MAIN-world scripts can't be re-run with executeScript's default (isolated) world; the bridge
+  // re-requests the patch via 'inject-fetch-patch' if it's missing
+  const files =
+    chrome.runtime
+      .getManifest()
+      .content_scripts?.filter((cs) => (cs as { world?: string }).world !== 'MAIN')
+      .flatMap((cs) => cs.js ?? []) ?? []
+  if (files.length === 0) return
+  const tabs = await chrome.tabs.query({ url: ['http://*/*', 'https://*/*'] })
+  for (const tab of tabs) {
+    if (tab.id == null) continue
+    chrome.scripting.executeScript({ target: { tabId: tab.id }, files }).catch(() => {})
+  }
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'inject-fetch-patch') {
     const tabId = sender.tab?.id
-    const prefix = (message.payload as { prefix?: string } | undefined)?.prefix ?? PROXY_APP_PREFIX
-    if (tabId != null) {
+    const { prefix = PROXY_APP_PREFIX, alreadyPatched } = (message.payload ?? {}) as { prefix?: string; alreadyPatched?: boolean }
+    if (tabId != null && tabId >= 0 && alreadyPatched) {
+      setTabPatchStatus(tabId, true)
+      sendResponse({ ok: true })
+      return true
+    }
+    if (tabId != null && tabId >= 0) {
       chrome.scripting
         .executeScript({
           target: { tabId },
@@ -29,19 +56,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           func: injectFetchPatch,
           args: [prefix, MAX_RESPONSE_BODY_SIZE],
         })
-        .then(() => sendResponse({ ok: true }))
-        .catch((err) => sendResponse({ ok: false, error: String(err) }))
+        .then(() => {
+          setTabPatchStatus(tabId, true)
+          sendResponse({ ok: true })
+        })
+        .catch((err) => {
+          setTabPatchStatus(tabId, false, String(err))
+          console.warn('[proxy-app] fetch patch injection failed', tabId, err)
+          sendResponse({ ok: false, error: String(err) })
+        })
     } else {
       sendResponse({ ok: false, error: 'No tab' })
     }
     return true
   }
   if (message.type === 'response-body') {
-    const { pathname, method, body } = (message.payload || {}) as { pathname?: string; method?: string; body?: string }
-    if (pathname && method && body) {
-      updateLogWithResponseBody(pathname, method, body)
-    }
-    sendResponse({ ok: true })
+    const { url, pathname, method, body } = (message.payload || {}) as { url?: string; pathname?: string; method?: string; body?: string }
+    stateReady.then(() => {
+      if (pathname && method && body) {
+        updateLogWithResponseBody(pathname, method, body, url)
+      }
+      sendResponse({ ok: true })
+    })
+    return true
+  }
+  if (message.type === 'response-body-skip') {
+    const { url, method, reason } = (message.payload || {}) as { url?: string; method?: string; reason?: string }
+    stateReady.then(() => {
+      if (url && method) tracePageEvent(url, method, `page: body NOT captured — ${reason ?? 'unknown reason'}`, 'after')
+      sendResponse({ ok: true })
+    })
     return true
   }
   if (message.type === 'proxy-fetch') {

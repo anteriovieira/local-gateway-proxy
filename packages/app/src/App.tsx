@@ -37,6 +37,7 @@ const PANEL_TITLES: Record<PanelId, string> = {
 const COMPACT_BREAKPOINT = 640
 
 const STORAGE_KEY = 'lgp-workspaces'
+const MAX_LOG_ENTRIES = 500
 
 function generateId() {
   return Math.random().toString(36).substring(2, 9)
@@ -95,7 +96,7 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
   const startTimeRef = useRef<number | null>(null)
 
   useEffect(() => {
-    if (workspaces.length > 0) saveWorkspacesToStorage(workspaces)
+    saveWorkspacesToStorage(workspaces)
   }, [workspaces])
 
   // Sync badge count for extension
@@ -129,7 +130,8 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
       setWorkspaces((prev) =>
         prev.map((ws) => {
           if (ws.id !== data.workspaceId) return ws
-          return { ...ws, logs: [...ws.logs, { timestamp: data.timestamp, message: data.message, type: data.type }] }
+          const logs = [...ws.logs, { timestamp: data.timestamp, message: data.message, type: data.type }]
+          return { ...ws, logs: logs.length > MAX_LOG_ENTRIES ? logs.slice(-MAX_LOG_ENTRIES) : logs }
         })
       )
     })
@@ -146,7 +148,8 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
               return { ...ws, apiLogs: updatedLogs }
             }
           }
-          return { ...ws, apiLogs: [...(ws.apiLogs || []), data.apiLog] }
+          const apiLogs = [...(ws.apiLogs || []), data.apiLog]
+          return { ...ws, apiLogs: apiLogs.length > MAX_LOG_ENTRIES ? apiLogs.slice(-MAX_LOG_ENTRIES) : apiLogs }
         })
       )
     })
@@ -204,7 +207,8 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
     setWorkspaces((prev) =>
       prev.map((ws) => {
         if (ws.id !== workspaceId) return ws
-        return { ...ws, logs: [...ws.logs, { timestamp: new Date().toLocaleTimeString(), message, type }] }
+        const logs = [...ws.logs, { timestamp: new Date().toLocaleTimeString(), message, type }]
+        return { ...ws, logs: logs.length > MAX_LOG_ENTRIES ? logs.slice(-MAX_LOG_ENTRIES) : logs }
       })
     )
   }
@@ -566,8 +570,8 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
   // --- Shared nav items (same for extension and desktop) ---
   const navItems: Array<{ id: NavTab; icon: React.ReactNode; label: string }> = [
     { id: 'workspaces', icon: <Layers className="w-4 h-4" />, label: 'Workspaces' },
-    { id: 'definitions', icon: <Sliders className="w-4 h-4" />, label: 'Definitions' },
     { id: 'requests', icon: <History className="w-4 h-4" />, label: 'History' },
+    { id: 'definitions', icon: <Sliders className="w-4 h-4" />, label: 'Definitions' },
     { id: 'database', icon: <Database className="w-4 h-4" />, label: 'Database' },
     { id: 'mocks', icon: <Server className="w-4 h-4" />, label: 'Mocks' },
   ]
@@ -675,6 +679,7 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
           variant="extension"
           isEndpointsPanelOpen={activeTab === 'definitions'}
           onCloseEndpointsPanel={() => setActiveTab('requests')}
+          onOpenHistory={() => setActiveTab('requests')}
         />
       )
     }
@@ -919,6 +924,7 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
                           onToggleAllEndpoints={(enabled) => toggleAllEndpoints(activeWorkspace.id, enabled)}
                           onClearLogs={() => clearLogs(activeWorkspace.id)}
                           variant={variant}
+                          onOpenHistory={() => handleNavClick('requests')}
                         />
                       ) : (
                         <div className="flex-1 h-full flex items-center justify-center text-zinc-600 text-sm rounded-xl bg-zinc-950 border border-zinc-800">

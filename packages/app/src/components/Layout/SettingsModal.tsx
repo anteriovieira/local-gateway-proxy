@@ -26,19 +26,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ workspace, onUpdate,
         <span className="text-xs font-medium text-zinc-400">Settings</span>
       </div>
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <TabsList variant="pill" className="justify-start gap-1 px-3 py-1.5 border-b border-zinc-900 shrink-0">
-          <TabsTrigger value="general" variant="pill" className="text-xs px-2.5 py-1">
-            General
-          </TabsTrigger>
-          <TabsTrigger value="integration" variant="pill" className="text-xs px-2.5 py-1">
-            Integration
-          </TabsTrigger>
-          {variant === 'extension' && (
-            <TabsTrigger value="capture" variant="pill" className="text-xs px-2.5 py-1">
-              Capture
+        <div className="px-3 py-2 border-b border-zinc-900 shrink-0">
+          <TabsList variant="segmented">
+            <TabsTrigger value="general" variant="segmented">
+              General
             </TabsTrigger>
-          )}
-        </TabsList>
+            <TabsTrigger value="integration" variant="segmented">
+              Integration
+            </TabsTrigger>
+            {variant === 'extension' && (
+              <TabsTrigger value="capture" variant="segmented">
+                Capture
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
         <div className="flex-1 overflow-y-auto min-h-0">
             <div className="px-4 sm:px-6 py-4">
             <TabsContent value="general" className="mt-0">

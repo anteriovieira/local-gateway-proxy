@@ -75,4 +75,6 @@ export interface ApiLogEntry {
     requestHeaders?: Record<string, string>
     /** Response headers (key: value) */
     responseHeaders?: Record<string, string>
+    /** Diagnostic steps recorded while capturing this request (extension only) */
+    captureTrace?: string[]
 }

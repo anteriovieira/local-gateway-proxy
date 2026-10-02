@@ -1,0 +1,103 @@
+---
+title: Endpoints
+description: Defining and managing API endpoints.
+---
+
+Endpoints are the individual API routes that Proxy App intercepts and proxies. They are automatically extracted from your JSON configuration.
+
+## How Endpoints Are Created
+
+When you paste a JSON config in the **Config** tab, the parser extracts endpoints from the `paths` object. Each combination of path + HTTP method becomes an endpoint:
+
+```json
+{
+  "paths": {
+    "/users/{id}": {
+      "get": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://api.example.com/users/{id}"
+        }
+      },
+      "put": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://api.example.com/users/{id}"
+        }
+      }
+    }
+  }
+}
+```
+
+This creates two endpoints:
+
+| Method | Path | Target |
+|--------|------|--------|
+| GET | `/users/{id}` | `https://api.example.com/users/{id}` |
+| PUT | `/users/{id}` | `https://api.example.com/users/{id}` |
+
+## Endpoint Properties
+
+Each endpoint has the following properties (from the `EndpointDef` type):
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `path` | `string` | URL path pattern (e.g., `/users/{id}`) |
+| `method` | `string` | HTTP method (`GET`, `POST`, `PUT`, `DELETE`, etc.) |
+| `uriTemplate` | `string` | Target URL template with variable placeholders |
+| `enabled` | `boolean` | Whether the endpoint is active |
+| `isMock` | `boolean` | Whether this is a mock endpoint |
+| `mockResponse` | `string` | Static JSON response body (mock only) |
+| `mockStatusCode` | `number` | HTTP status code to return (mock only) |
+| `mockHeaders` | `object` | Response headers to return (mock only) |
+| `mockDelay` | `number` | Simulated response delay in ms (mock only) |
+
+## Enabling / Disabling Endpoints
+
+Each endpoint has a toggle switch in the **Endpoints** tab. When disabled:
+
+- The endpoint is **not** registered as a route
+- Requests to that path return **404** (or are forwarded to the bypass URL if bypass is enabled)
+- The endpoint remains in your configuration and can be re-enabled at any time
+
+<Callout type="info">
+**Desktop App:** You need to restart the server after toggling endpoints for changes to take effect.
+</Callout>
+
+## Supported HTTP Methods
+
+The parser recognizes all standard HTTP methods:
+
+- `GET`, `POST`, `PUT`, `PATCH`, `DELETE`
+- `HEAD`, `OPTIONS`
+
+Methods are case-insensitive in the config (`"get"` and `"GET"` both work) but are normalized to uppercase internally.
+
+## Base Path
+
+If your config includes a `basePath` property, it's prepended to all paths:
+
+```json
+{
+  "basePath": "/api/v1",
+  "paths": {
+    "/users": {
+      "get": { ... }
+    }
+  }
+}
+```
+
+This creates an endpoint at `/api/v1/users` instead of `/users`.
+
+## Integration Types
+
+The parser recognizes two integration types:
+
+| Type | Behavior |
+|------|----------|
+| `http_proxy` / `http` | Proxies the request to the target URI |
+| `mock` | Returns a static response (see [Mock Responses](/docs/guides/mock-responses)) |
+
+If `type` is omitted, the endpoint defaults to `http_proxy` behavior.

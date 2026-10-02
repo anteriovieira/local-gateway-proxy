@@ -3,13 +3,16 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import type { EndpointDef } from '@proxy-app/shared'
 import { cn } from '@proxy-app/ui'
 import { resolveUriTemplateForDisplay } from '../../utils/resolveUrl'
-import { Check, Search } from 'lucide-react'
+import { Check, Search, ClipboardPaste, History, FileCode } from 'lucide-react'
 
 interface EndpointListProps {
   endpoints: EndpointDef[]
   variables?: Record<string, string>
   onToggle: (index: number) => void
   onEndpointClick?: (path: string) => void
+  onPasteConfig?: () => void
+  onAddFromHistory?: () => void
+  onUseExample?: () => void
 }
 
 const METHODS = ['ALL', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as const
@@ -20,7 +23,7 @@ interface EndpointItem {
   originalIndex: number
 }
 
-export const EndpointList: React.FC<EndpointListProps> = ({ endpoints, variables = {}, onToggle, onEndpointClick }) => {
+export const EndpointList: React.FC<EndpointListProps> = ({ endpoints, variables = {}, onToggle, onEndpointClick, onPasteConfig, onAddFromHistory, onUseExample }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [methodFilter, setMethodFilter] = useState<string>('ALL')
   const parentRef = useRef<HTMLDivElement>(null)
@@ -50,7 +53,18 @@ export const EndpointList: React.FC<EndpointListProps> = ({ endpoints, variables
     return (
       <div className="flex flex-1 flex-col items-center justify-center text-zinc-600 p-8 border border-dashed border-zinc-800 rounded-lg min-h-0">
         <p>No endpoints configured</p>
-        <p className="text-xs mt-1">Paste a config to get started</p>
+        <p className="text-xs mt-1">Choose how to get started</p>
+        <div className="flex flex-col gap-1.5 mt-4 w-full max-w-[220px]">
+          {onPasteConfig && (
+            <EmptyAction icon={<ClipboardPaste className="w-3.5 h-3.5" />} label="Paste config" onClick={onPasteConfig} />
+          )}
+          {onAddFromHistory && (
+            <EmptyAction icon={<History className="w-3.5 h-3.5" />} label="Add from history" onClick={onAddFromHistory} />
+          )}
+          {onUseExample && (
+            <EmptyAction icon={<FileCode className="w-3.5 h-3.5" />} label="Use example" onClick={onUseExample} />
+          )}
+        </div>
       </div>
     )
   }
@@ -142,6 +156,16 @@ export const EndpointList: React.FC<EndpointListProps> = ({ endpoints, variables
     </div>
   )
 }
+
+const EmptyAction: React.FC<{ icon: React.ReactNode; label: string; onClick: () => void }> = ({ icon, label, onClick }) => (
+  <button
+    onClick={onClick}
+    className="flex items-center gap-2 px-3 py-1.5 text-xs text-zinc-400 bg-zinc-900 hover:bg-zinc-800 hover:text-zinc-200 border border-zinc-800 rounded-md transition-colors"
+  >
+    {icon}
+    {label}
+  </button>
+)
 
 function getMethodColor(method: string) {
   switch (method.toLowerCase()) {

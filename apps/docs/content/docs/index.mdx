@@ -1,0 +1,54 @@
+---
+title: Introduction
+description: What is Proxy App and why it exists.
+---
+
+Proxy App is a local API Gateway proxy for development and testing. It lets you intercept, proxy, and mock HTTP requests using an AWS API Gateway-style JSON configuration — no changes to your application code required.
+
+## Why Proxy App?
+
+When building frontend applications that depend on backend APIs, you often need to:
+
+- **Redirect API calls** to a different backend (local, staging, or a colleague's machine)
+- **Mock responses** when the backend isn't ready yet
+- **Test edge cases** like error codes, slow responses, or specific payloads
+- **Bypass CORS** restrictions during local development
+- **Debug requests** by inspecting headers, bodies, and timing
+
+Proxy App solves all of these with a single tool.
+
+## Two Platforms, One Experience
+
+Proxy App is available in two forms that share the same UI and configuration format:
+
+### Chrome Extension
+
+Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/proxy-app/gdhjkolpmofllkogghodpnnmjajnbilg). The extension intercepts `fetch` calls directly in the browser — no local server needed. It runs as a side panel alongside your web app.
+
+**Best for:** Frontend developers who want to proxy or mock API calls without leaving the browser.
+
+### Desktop App (Electron)
+
+Download the desktop app for macOS, Windows, or Linux. It runs a local Express proxy server that any HTTP client (Postman, curl, your app) can connect to.
+
+**Best for:** Backend developers, full-stack teams, or anyone who needs a standalone proxy that works with any HTTP client.
+
+## Key Features
+
+- **AWS API Gateway JSON config** — paste your existing API Gateway export and go
+- **Stage variables** — use `${stageVariables.name}` to switch between environments
+- **Dynamic path parameters** — `{id}` in paths are extracted and resolved automatically
+- **Per-endpoint enable/disable** — toggle individual routes without editing config
+- **Mock responses** — return fixed JSON with custom status codes, headers, and delays
+- **Mock database** — in-memory CRUD engine for prototyping (Chrome Extension)
+- **Request logging** — inspect every request with full details
+- **Multiple workspaces** — isolated configurations with independent servers
+- **Bypass mode** — forward unmatched requests to a fallback URL
+
+## Next Steps
+
+<Cards>
+  <Card title="Installation" href="/docs/getting-started/installation" />
+  <Card title="Quick Start" href="/docs/getting-started/quickstart" />
+  <Card title="Configuration Format" href="/docs/configuration/config-format" />
+</Cards>

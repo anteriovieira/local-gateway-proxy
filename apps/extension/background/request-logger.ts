@@ -10,6 +10,72 @@ function generateLogId(): string {
     return `log-${Date.now()}-${++logIdCounter}`
 }
 
+/** Tabs where the main-world fetch/XHR patch was injected (tabId -> result) */
+const tabPatchStatus = new Map<number, { ok: boolean; error?: string; at: number }>()
+
+/**
+ * Page-side events seen before the matching webRequest log exists (the page patch asks the
+ * background whether to proxy before the real XHR/fetch is sent). Consumed on onBeforeRequest.
+ */
+const earlyPageNotes: { url: string; method: string; note: string; at: number }[] = []
+const EARLY_NOTE_TTL_MS = 60_000
+
+function traceTime(): string {
+    return new Date().toISOString().slice(11, 23)
+}
+
+function withTrace(log: ApiLogEntry, note: string): ApiLogEntry {
+    return { ...log, captureTrace: [...(log.captureTrace ?? []), `${traceTime()} ${note}`] }
+}
+
+function sameUrl(a: string, b: string): boolean {
+    try {
+        const ua = new URL(a)
+        const ub = new URL(b)
+        return ua.origin === ub.origin && ua.pathname === ub.pathname && ua.search === ub.search
+    } catch {
+        return a === b
+    }
+}
+
+export function setTabPatchStatus(tabId: number, ok: boolean, error?: string): void {
+    tabPatchStatus.set(tabId, { ok, error, at: Date.now() })
+}
+
+/**
+ * Record what the page patch did with a request (proxy check result, body capture, skip reason).
+ * 'before' events happen before the request is sent, so they are always buffered until
+ * onBeforeRequest creates the log; 'after' events attach to the most recent matching log.
+ */
+export function tracePageEvent(url: string, method: string, note: string, phase: 'before' | 'after'): void {
+    const upper = method.toUpperCase()
+    for (let i = phase === 'after' ? logs.length - 1 : -1; i >= 0; i--) {
+        const log = logs[i]
+        if (log.method.toUpperCase() !== upper || !log.requestUrl || !sameUrl(log.requestUrl, url)) continue
+        if (Date.now() - new Date(log.timestamp).getTime() > EARLY_NOTE_TTL_MS) break
+        logs[i] = withTrace(log, note)
+        broadcastLog(logs[i], true)
+        return
+    }
+    earlyPageNotes.push({ url, method: upper, note: `${traceTime()} ${note}`, at: Date.now() })
+    if (earlyPageNotes.length > 200) earlyPageNotes.splice(0, earlyPageNotes.length - 200)
+}
+
+function takeEarlyPageNotes(url: string, method: string): string[] {
+    const now = Date.now()
+    const taken: string[] = []
+    for (let i = earlyPageNotes.length - 1; i >= 0; i--) {
+        const n = earlyPageNotes[i]
+        if (now - n.at > EARLY_NOTE_TTL_MS) {
+            earlyPageNotes.splice(i, 1)
+        } else if (n.method === method.toUpperCase() && sameUrl(n.url, url)) {
+            taken.unshift(n.note)
+            earlyPageNotes.splice(i, 1)
+        }
+    }
+    return taken
+}
+
 /** Decode requestBody from webRequest details to a displayable string */
 function decodeRequestBody(details: chrome.webRequest.WebRequestBodyDetails): string | undefined {
     const rb = details.requestBody
@@ -103,8 +169,37 @@ export function initRequestLogger(): void {
                     startTime: now,
                     logId: recentPending.id
                 })
+                const idx = logs.findIndex((l) => l.id === recentPending.id)
+                if (idx >= 0) {
+                    logs[idx] = withTrace(logs[idx], `webRequest: merged request ${details.requestId} (${details.url}) into this log (same path within 400ms)`)
+                    broadcastLog(logs[idx], true)
+                }
                 return
             }
+
+            const tabId = (details as { tabId?: number }).tabId ?? -1
+            const trace: string[] = [
+                `${traceTime()} webRequest: started (id ${details.requestId}, type ${requestType}, tab ${tabId}, initiator ${initiator ?? 'none'})`,
+            ]
+            if (tabId < 0) {
+                trace.push(`${traceTime()} webRequest: not from a tab (extension/service worker request) — page patch cannot capture its body`)
+            } else {
+                const patch = tabPatchStatus.get(tabId)
+                trace.push(
+                    `${traceTime()} page patch for tab ${tabId}: ` +
+                        (!patch
+                            ? 'no injection recorded since service worker started (page not reloaded after extension reload, or service worker restarted)'
+                            : patch.ok
+                              ? `injected ${Math.round((now - patch.at) / 1000)}s ago`
+                              : `injection FAILED: ${patch.error}`)
+                )
+            }
+            trace.push(
+                `${traceTime()} definitions: ` +
+                    (match ? `matched ${match.endpoint.method} ${match.endpoint.path}${match.endpoint.isMock ? ' (mock)' : ''} -> ${targetUrl}` : 'no match (passthrough)')
+            )
+            const early = takeEarlyPageNotes(details.url, method)
+            trace.push(...(early.length > 0 ? early : [`${traceTime()} page patch: no proxy check received for this URL before it was sent (patch not active or app bypassed patched fetch/XHR)`]))
 
             const logId = generateLogId()
             const entry: ApiLogEntry = {
@@ -116,7 +211,8 @@ export function initRequestLogger(): void {
                 requestUrl: details.url,
                 targetUrl,
                 ...(typeof initiator === 'string' && initiator && { initiatorUrl: initiator }),
-                ...(requestBody && { requestBody })
+                ...(requestBody && { requestBody }),
+                captureTrace: trace,
             }
 
             pendingRequests.set(details.requestId, {
@@ -140,12 +236,16 @@ export function initRequestLogger(): void {
             const duration = Date.now() - pending.startTime
             const logIndex = logs.findIndex(l => l.id === pending.logId)
             if (logIndex >= 0) {
-                logs[logIndex] = {
-                    ...logs[logIndex],
-                    status: 'completed',
-                    statusCode: details.statusCode,
-                    duration
-                }
+                logs[logIndex] = withTrace(
+                    {
+                        ...logs[logIndex],
+                        status: 'completed',
+                        statusCode: details.statusCode,
+                        duration
+                    },
+                    `webRequest: completed ${details.statusCode} in ${duration}ms` +
+                        (logs[logIndex].responseBody ? ' (body already captured)' : ' (waiting for body from page)')
+                )
                 broadcastLog(logs[logIndex], true)
             }
 
@@ -173,12 +273,15 @@ export function initRequestLogger(): void {
             }
 
             const duration = Date.now() - pending.startTime
-            logs[logIndex] = {
-                ...logs[logIndex],
-                status: 'error',
-                error: details.error,
-                duration
-            }
+            logs[logIndex] = withTrace(
+                {
+                    ...logs[logIndex],
+                    status: 'error',
+                    error: details.error,
+                    duration
+                },
+                `webRequest: error ${details.error}`
+            )
             broadcastLog(logs[logIndex], true)
             pendingRequests.delete(details.requestId)
         },
@@ -212,35 +315,48 @@ export function getLogs(): ApiLogEntry[] {
 /**
  * Update a log entry with response body. Matches by pathname + method, picks the most recent
  * completed/error log without responseBody (fallback when addProxyLog didn't capture it).
+ * The page's load event can reach us before webRequest.onCompleted, so if no finished log
+ * matches, the body is attached to the oldest matching pending log and kept when it completes.
  */
-export function updateLogWithResponseBody(pathname: string, method: string, body: string): void {
+export function updateLogWithResponseBody(pathname: string, method: string, body: string, url?: string): void {
     const state = getProxyState()
-    if (!state?.isActive) return
+    if (!state?.isActive) {
+        console.debug('[proxy-app] response body dropped: proxy inactive', method, pathname)
+        return
+    }
 
-    // Find most recent log with matching path and method, without responseBody
-    let found = false
-    for (let i = logs.length - 1; i >= 0; i--) {
-        const log = logs[i]
-        let pathMatches = log.path === pathname
-        if (!pathMatches && log.targetUrl) {
-            try {
-                pathMatches = new URL(log.targetUrl).pathname === pathname
-            } catch {
-                /* ignore invalid URL */
-            }
+    const matches = (log: ApiLogEntry): boolean => {
+        if (log.responseBody || log.method.toUpperCase() !== method.toUpperCase()) return false
+        if (log.path === pathname) return true
+        if (!log.targetUrl) return false
+        try {
+            return new URL(log.targetUrl).pathname === pathname
+        } catch {
+            return false
         }
-        if (
-            (log.status === 'completed' || log.status === 'error') &&
-            !log.responseBody &&
-            log.method.toUpperCase() === method.toUpperCase() &&
-            pathMatches
-        ) {
-            logs[i] = { ...log, responseBody: body }
-            broadcastLog(logs[i], true)
-            found = true
+    }
+
+    let index = -1
+    for (let i = logs.length - 1; i >= 0; i--) {
+        if ((logs[i].status === 'completed' || logs[i].status === 'error') && matches(logs[i])) {
+            index = i
             break
         }
     }
+    if (index < 0) {
+        index = logs.findIndex((l) => l.status === 'pending' && matches(l))
+    }
+    if (index < 0) {
+        console.debug('[proxy-app] response body dropped: no log without body matches', method, pathname)
+        if (url) tracePageEvent(url, method, `page: body received (${body.length} chars) but no log without body matched ${method} ${pathname}`, 'after')
+        return
+    }
+
+    logs[index] = withTrace(
+        { ...logs[index], responseBody: body },
+        `page: body received (${body.length} chars), attached while log was ${logs[index].status}`
+    )
+    broadcastLog(logs[index], true)
 }
 
 /**
@@ -297,6 +413,10 @@ export function addProxyLog(entry: {
         requestHeaders: entry.requestHeaders,
         responseHeaders: entry.responseHeaders,
         isMock: entry.isMock,
+        captureTrace: [
+            ...takeEarlyPageNotes(entry.requestUrl, entry.method),
+            `${traceTime()} proxy: ${entry.isMock ? 'mock response served' : `fetched by extension -> ${entry.targetUrl}`} (${entry.statusCode ?? entry.error ?? entry.status}), body ${entry.responseBody != null ? `${entry.responseBody.length} chars` : 'none'}`,
+        ],
     }
     logs.push(log)
     broadcastLog(log, false)

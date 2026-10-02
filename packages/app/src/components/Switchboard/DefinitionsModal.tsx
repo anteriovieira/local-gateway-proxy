@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { X, Variable, Code, Check } from 'lucide-react'
+import { X, Variable, Code, Check, FilePlus } from 'lucide-react'
 import { JsonEditor } from '../JsonEditor'
+import { buildDefinitionTemplate } from '../../utils/definitionTemplate'
 import type { Workspace } from '../../types'
-import { cn, Tabs, TabsList, TabsTrigger, TabsContent } from '@proxy-app/ui'
+import { cn, CopyButton, Tabs, TabsList, TabsTrigger, TabsContent } from '@proxy-app/ui'
 
 interface DefinitionsModalProps {
   workspace: Workspace | null
@@ -102,21 +103,39 @@ export const DefinitionsModal: React.FC<DefinitionsModalProps> = ({
         </div>
       )}
       <Tabs defaultValue="spec" className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <TabsList variant="pill" className="justify-start gap-1 px-3 py-1.5 border-b border-zinc-900 shrink-0">
-          <TabsTrigger value="spec" variant="pill" className="text-xs px-2.5 py-1 gap-1.5">
-            <Code className="w-3.5 h-3.5" />
-            Spec
-          </TabsTrigger>
-          <TabsTrigger value="variables" variant="pill" className="text-xs px-2.5 py-1 gap-1.5">
-            <Variable className="w-3.5 h-3.5" />
-            Variables
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="spec" className="flex-1 min-h-0 mt-0 overflow-hidden">
-          <JsonEditor
-            value={ws.configContent}
-            onChange={handleConfigChange}
-          />
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-900 shrink-0">
+          <TabsList variant="segmented">
+            <TabsTrigger value="spec" variant="segmented">
+              <Code className="w-3.5 h-3.5" />
+              Spec
+            </TabsTrigger>
+            <TabsTrigger value="variables" variant="segmented">
+              <Variable className="w-3.5 h-3.5" />
+              Variables
+            </TabsTrigger>
+          </TabsList>
+          {ws.configContent?.trim() && (
+            <CopyButton text={ws.configContent} iconSize="w-3.5 h-3.5" className="shrink-0" title="Copy spec" />
+          )}
+        </div>
+        <TabsContent value="spec" className="flex-1 min-h-0 mt-0 overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0">
+            <JsonEditor
+              value={ws.configContent}
+              onChange={handleConfigChange}
+            />
+          </div>
+          {!ws.configContent?.trim() && (
+            <div className="flex justify-center py-2 shrink-0">
+              <button
+                onClick={() => handleConfigChange(buildDefinitionTemplate(ws.integrationProperty))}
+                className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-zinc-500 hover:text-zinc-300 rounded-md hover:bg-zinc-900 transition-colors"
+              >
+                <FilePlus className="w-3.5 h-3.5" />
+                Use example template
+              </button>
+            </div>
+          )}
         </TabsContent>
         <TabsContent value="variables" className="flex-1 min-h-0 mt-0 overflow-y-auto">
           <div className="p-6">

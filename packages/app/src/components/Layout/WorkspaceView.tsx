@@ -4,6 +4,7 @@ import type { Workspace, ApiLogEntry } from '../../types'
 import { EndpointList } from '../Switchboard/EndpointList'
 import { EnhancedLogPanel } from '../Switchboard/EnhancedLogPanel'
 import { DefinitionsModal } from '../Switchboard/DefinitionsModal'
+import { buildDefinitionTemplate } from '../../utils/definitionTemplate'
 import { CheckSquare, Sliders } from 'lucide-react'
 import { cn, ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@proxy-app/ui'
 
@@ -18,6 +19,7 @@ interface WorkspaceViewProps {
   variant?: 'desktop' | 'extension'
   isEndpointsPanelOpen?: boolean
   onCloseEndpointsPanel?: () => void
+  onOpenHistory?: () => void
 }
 
 export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
@@ -31,6 +33,7 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
   variant = 'desktop',
   isEndpointsPanelOpen = false,
   onCloseEndpointsPanel,
+  onOpenHistory,
 }) => {
   const [isDefinitionsModalOpen, setIsDefinitionsModalOpen] = useState(false)
   const [logSearchQuery, setLogSearchQuery] = useState('')
@@ -111,6 +114,18 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
     toast.success('Mock created', { description: `${method} ${path}` })
   }
 
+  const handleAddFromHistory = () => {
+    onOpenHistory?.()
+    toast.info('Add from history', { description: 'Select a request and click "Add to definitions"' })
+  }
+
+  const handleUseExample = () => {
+    if (!workspace.configContent?.trim()) {
+      onUpdate({ configContent: buildDefinitionTemplate(workspace.integrationProperty) })
+    }
+    setIsDefinitionsModalOpen(true)
+  }
+
   const endpointsPanelContent = () => (
     <div className="h-full min-h-0 flex flex-col flex-1 overflow-hidden bg-zinc-950">
       <div className="flex flex-row justify-between items-center h-10 px-3 border-b border-zinc-900 bg-zinc-900/30 shrink-0">
@@ -140,7 +155,15 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
         </div>
       </div>
       <div className="flex-1 min-h-0 overflow-hidden p-4 flex flex-col">
-        <EndpointList endpoints={workspace.endpoints} variables={workspace.variables} onToggle={onEndpointToggle} onEndpointClick={handleEndpointClick} />
+        <EndpointList
+          endpoints={workspace.endpoints}
+          variables={workspace.variables}
+          onToggle={onEndpointToggle}
+          onEndpointClick={handleEndpointClick}
+          onPasteConfig={() => setIsDefinitionsModalOpen(true)}
+          onAddFromHistory={handleAddFromHistory}
+          onUseExample={handleUseExample}
+        />
       </div>
     </div>
   )

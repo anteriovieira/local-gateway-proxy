@@ -1,0 +1,187 @@
+---
+title: JSON Config Format
+description: Complete reference for the AWS API Gateway-style JSON configuration.
+---
+
+Proxy App uses an AWS API Gateway-style JSON format for defining endpoints. This is the same format you get when exporting a REST API from AWS API Gateway, making it easy to reuse existing configs.
+
+## Basic Structure
+
+```json
+{
+  "basePath": "/api",
+  "paths": {
+    "/resource/{id}": {
+      "get": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://backend.example.com/api/resource/{id}"
+        }
+      }
+    }
+  }
+}
+```
+
+## Top-Level Properties
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `basePath` | `string` | No | Prepended to all path patterns. Trailing slashes are trimmed. |
+| `paths` | `object` | Yes | Map of path patterns to method definitions. |
+
+## Path Definition
+
+Each key in `paths` is a URL pattern. The value is an object mapping HTTP methods to their integration config:
+
+```json
+{
+  "paths": {
+    "/path/{param}": {
+      "get": { ... },
+      "post": { ... },
+      "put": { ... },
+      "delete": { ... }
+    }
+  }
+}
+```
+
+### Path syntax
+
+- Static segments: `/users`, `/api/v1/health`
+- Dynamic parameters: `/users/{userId}`, `/posts/{postId}/comments/{commentId}`
+- Parameters match any non-empty segment between `/` characters
+
+### HTTP methods
+
+Methods are case-insensitive: `"get"` and `"GET"` both work. Supported methods:
+
+`get`, `post`, `put`, `patch`, `delete`, `head`, `options`
+
+## Integration Object
+
+Each method contains an integration definition under the `x-amazon-apigateway-integration` key:
+
+```json
+{
+  "x-amazon-apigateway-integration": {
+    "type": "http_proxy",
+    "uri": "https://api.example.com/path"
+  }
+}
+```
+
+<Callout type="info">
+The integration property name is configurable per workspace. The default is `x-amazon-apigateway-integration`, but you can change it to match your custom config format.
+</Callout>
+
+### Proxy Integration
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `type` | `string` | No | `"http_proxy"`, `"http"`, or omitted. All three create a proxy endpoint. |
+| `uri` | `string` | Yes | Target URL template. Supports `${variable}` and `{pathParam}` placeholders. |
+
+### Mock Integration
+
+| Property | Type | Required | Description |
+|----------|------|----------|-------------|
+| `type` | `string` | Yes | Must be `"mock"`. |
+| `responses` | `object` | Yes | Response definitions. |
+| `responses.default` | `object` | Yes | Default response (can also use `responses["200"]`). |
+| `responses.default.responseTemplates` | `object` | Yes | Map of content type to response body string. |
+
+Example mock:
+
+```json
+{
+  "x-amazon-apigateway-integration": {
+    "type": "mock",
+    "responses": {
+      "default": {
+        "responseTemplates": {
+          "application/json": "{\"message\": \"Hello from mock\"}"
+        }
+      }
+    }
+  }
+}
+```
+
+The parser looks for `application/json` first, then `*/*` as a fallback.
+
+## Complete Example
+
+Here's a full configuration with proxy endpoints, mock endpoints, stage variables, and path parameters:
+
+```json
+{
+  "basePath": "/api",
+  "paths": {
+    "/users": {
+      "get": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://${stageVariables.apiHost}/users?limit=50"
+        }
+      },
+      "post": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://${stageVariables.apiHost}/users"
+        }
+      }
+    },
+    "/users/{userId}": {
+      "get": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://${stageVariables.apiHost}/users/{userId}"
+        }
+      },
+      "delete": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://${stageVariables.apiHost}/users/{userId}"
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "x-amazon-apigateway-integration": {
+          "type": "mock",
+          "responses": {
+            "default": {
+              "responseTemplates": {
+                "application/json": "{\"status\": \"ok\"}"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Variables extracted:** `stageVariables.apiHost`
+
+**Endpoints created:**
+
+| Method | Path | Type | Target |
+|--------|------|------|--------|
+| GET | `/api/users` | proxy | `https://{apiHost}/users?limit=50` |
+| POST | `/api/users` | proxy | `https://{apiHost}/users` |
+| GET | `/api/users/{userId}` | proxy | `https://{apiHost}/users/{userId}` |
+| DELETE | `/api/users/{userId}` | proxy | `https://{apiHost}/users/{userId}` |
+| GET | `/api/health` | mock | `{"status": "ok"}` |
+
+## Variable Syntax Reference
+
+| Syntax | Example | Source |
+|--------|---------|--------|
+| `${variableName}` | `${stageVariables.apiHost}` | Variables tab |
+| `{pathParam}` | `{userId}` | Request URL |
+
+See [Stage Variables](/docs/guides/stage-variables) and [Path Parameters](/docs/guides/path-parameters) for details.

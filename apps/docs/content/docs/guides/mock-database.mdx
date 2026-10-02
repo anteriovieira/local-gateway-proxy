@@ -1,0 +1,81 @@
+---
+title: Mock Database
+description: Using the in-memory mock database for CRUD operations.
+---
+
+<Callout type="info">
+The mock database is currently available in the **Chrome Extension** only.
+</Callout>
+
+The mock database provides an in-memory CRUD engine that automatically handles standard REST operations on your defined collections. Instead of returning a single static response, endpoints backed by the mock database respond dynamically based on the HTTP method and data state.
+
+## How It Works
+
+When you enable the mock database for a workspace, Proxy App creates an in-memory data store. Endpoints configured with `mockDbCollection` delegate their handling to the CRUD engine instead of returning a static mock response.
+
+The engine supports:
+
+| Method | Path | Operation | Description |
+|--------|------|-----------|-------------|
+| GET | `/collection` | List | Returns all items in the collection |
+| GET | `/collection/{id}` | Get | Returns a single item by ID |
+| POST | `/collection` | Create | Adds a new item, auto-generates an ID |
+| PUT | `/collection/{id}` | Update | Replaces an item by ID |
+| PATCH | `/collection/{id}` | Partial update | Merges fields into an existing item |
+| DELETE | `/collection/{id}` | Delete | Removes an item by ID |
+
+## Setting Up the Mock Database
+
+### 1. Configure Initial Data
+
+In your workspace settings, define the initial data for the mock database as a JSON string. Top-level keys are collection names, values are arrays:
+
+```json
+{
+  "users": [
+    { "id": "1", "name": "Alice", "email": "alice@example.com" },
+    { "id": "2", "name": "Bob", "email": "bob@example.com" }
+  ],
+  "posts": [
+    { "id": "1", "title": "Hello World", "authorId": "1" }
+  ]
+}
+```
+
+### 2. Map Endpoints to Collections
+
+Set the `mockDbCollection` property on an endpoint to link it to a collection:
+
+| Endpoint Property | Value | Purpose |
+|---|---|---|
+| `mockDbCollection` | `"users"` | Routes CRUD operations to the `users` collection |
+| `mockResponseTemplate` | `"{{data}}"` | Template for wrapping DB results (optional) |
+
+### 3. Response Templates
+
+Use the `mockResponseTemplate` property to wrap database results in a custom structure. The `{{data}}` placeholder is replaced with the query result:
+
+```
+// Default (pass-through)
+{{data}}
+
+// Wrapped in an envelope
+{"result": {{data}}, "success": true}
+
+// Nested access with dot notation
+{{data.metadata}}
+```
+
+## Data Persistence
+
+The mock database state persists across service worker restarts within a browser session. Data is **not** persisted across browser restarts — the initial data is loaded fresh each time.
+
+## Example Workflow
+
+1. Define initial data with a `users` collection
+2. Configure `GET /users` and `GET /users/{id}` endpoints with `mockDbCollection: "users"`
+3. Configure `POST /users` with the same collection
+4. Start the proxy
+5. `GET /users` returns the full list
+6. `POST /users` with `{"name": "Charlie"}` adds a new user
+7. `GET /users` now includes Charlie with an auto-generated ID

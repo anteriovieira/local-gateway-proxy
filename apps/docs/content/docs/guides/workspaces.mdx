@@ -1,0 +1,60 @@
+---
+title: Workspaces
+description: Creating, managing, and switching between workspaces.
+---
+
+Workspaces are the core organizational unit in Proxy App. Each workspace has its own configuration, endpoints, variables, server port, and request logs — completely isolated from other workspaces.
+
+## Creating a Workspace
+
+Click the **+** button in the sidebar to create a new workspace. A default workspace is created automatically on first launch.
+
+Each workspace is assigned a unique port number starting from `3000` (desktop app only).
+
+## Renaming a Workspace
+
+Click on the workspace name in the sidebar and type a new name. Use descriptive names to keep things organized:
+
+- "Production API"
+- "Staging — v2 endpoints"
+- "Mock Server"
+
+## Switching Workspaces
+
+Click on any workspace in the sidebar to switch to it. The main panel updates to show that workspace's configuration, endpoints, variables, and logs.
+
+## Running Multiple Workspaces
+
+You can run multiple workspaces simultaneously. Each workspace operates independently:
+
+- **Desktop App:** Each workspace runs its own Express server on a separate port (e.g., 3000, 3001, 3002)
+- **Chrome Extension:** Only one workspace can be active at a time on the current page
+
+This is useful for:
+
+- Proxying to different backends on different ports
+- Running a mock server alongside a real proxy
+- Testing multiple API versions simultaneously
+
+## Workspace Configuration
+
+Each workspace stores:
+
+| Field | Description |
+|-------|-------------|
+| `name` | Display name in the sidebar |
+| `port` | Server port (desktop only, default: 3000) |
+| `configContent` | Raw JSON configuration string |
+| `endpoints` | Parsed endpoint definitions |
+| `variables` | Stage variable key-value pairs |
+| `bypassEnabled` | Whether unmatched requests are forwarded |
+| `bypassUri` | Fallback URL for unmatched requests |
+| `mockDbConfig` | Mock database initial data (extension only) |
+
+## Persistence
+
+Workspaces are automatically saved to `localStorage` (desktop) or `chrome.storage` (extension). All settings — config, variables, endpoint states, and server port — are restored when you reopen the app.
+
+## Deleting a Workspace
+
+Click the delete button on a workspace in the sidebar to remove it. This stops the server (if running) and removes all configuration. This action cannot be undone.

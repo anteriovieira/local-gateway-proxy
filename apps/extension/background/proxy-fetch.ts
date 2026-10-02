@@ -1,7 +1,7 @@
 import { getProxyState, findMatchingEndpoint } from './proxy-engine'
 import { resolveUrl, MockDatabase, handleMockDbEndpoint, applyResponseTemplate } from '@proxy-app/shared'
 import type { MockDbSnapshot } from '@proxy-app/shared'
-import { addProxyLog } from './request-logger'
+import { addProxyLog, tracePageEvent } from './request-logger'
 import { MAX_RESPONSE_BODY_SIZE } from './constants'
 
 // Singleton mock database instance for the active workspace
@@ -85,13 +85,21 @@ export async function handleProxyFetch(payload: ProxyFetchRequest): Promise<Prox
     try {
         pathname = new URL(payload.url).pathname
     } catch {
+        tracePageEvent(payload.url, payload.method, `page patch: proxy check — invalid URL "${payload.url}", passthrough`, 'before')
         return { proxied: false }
     }
 
     const match = findMatchingEndpoint(pathname, payload.method, state.endpoints)
     if (!match) {
+        tracePageEvent(payload.url, payload.method, 'page patch: proxy check — no definition matched, page sends request itself', 'before')
         return { proxied: false }
     }
+    tracePageEvent(
+        payload.url,
+        payload.method,
+        `page patch: proxy check — matched ${match.endpoint.method} ${match.endpoint.path}, extension handles request`,
+        'before'
+    )
 
     // Handle mock-db endpoints — CRUD against in-memory collection
     if (match.endpoint.isMock && match.endpoint.mockDbCollection && mockDb) {

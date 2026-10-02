@@ -1,0 +1,92 @@
+---
+title: Quick Start
+description: Get up and running with Proxy App in 5 minutes.
+---
+
+This guide walks you through creating your first workspace, pasting a config, starting the proxy, and seeing it work. The steps are the same for both the Chrome Extension and Desktop App.
+
+## 1. Open Proxy App
+
+- **Chrome Extension:** Click the Proxy App icon in the toolbar to open the side panel.
+- **Desktop App:** Launch the application from your Applications folder or start menu.
+
+## 2. Create a Workspace
+
+Click the **+** button in the sidebar to create a new workspace. A default workspace may already exist on first launch.
+
+Give it a descriptive name like "My API Proxy" by clicking the workspace name.
+
+## 3. Paste Your Config
+
+Switch to the **Config** tab and paste an AWS API Gateway-style JSON configuration:
+
+```json
+{
+  "paths": {
+    "/users/{id}": {
+      "get": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://jsonplaceholder.typicode.com/users/{id}"
+        }
+      }
+    },
+    "/posts": {
+      "get": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://jsonplaceholder.typicode.com/posts"
+        }
+      }
+    }
+  }
+}
+```
+
+The config is parsed automatically — endpoints appear in the **Endpoints** tab.
+
+## 4. Set Variables (if needed)
+
+If your config uses stage variables like `${stageVariables.env}`, switch to the **Variables** tab and fill in the values. The example above doesn't use any, so you can skip this step.
+
+## 5. Start the Proxy
+
+Toggle the **server switch** at the top of the workspace to **ON**.
+
+- **Desktop App:** An Express server starts on the configured port (default `3000`).
+- **Chrome Extension:** The fetch interceptor is injected into the active page.
+
+## 6. Make a Request
+
+**Desktop App — test with curl:**
+
+```bash
+curl http://localhost:3000/users/1
+```
+
+**Chrome Extension — test from the browser console:**
+
+```js
+const res = await fetch('/users/1');
+const data = await res.json();
+console.log(data);
+```
+
+The request is intercepted, proxied to `https://jsonplaceholder.typicode.com/users/1`, and the response is returned to your client.
+
+## 7. Check the Logs
+
+Switch to the **Logs** tab to see the request log. Click on any entry to inspect:
+
+- HTTP method and path
+- Target URL
+- Status code and duration
+- Request and response headers
+- Request and response body
+
+## What's Next?
+
+- [Manage Workspaces](/docs/guides/workspaces) — create multiple isolated configurations
+- [Configure Endpoints](/docs/guides/endpoints) — define routes with methods and paths
+- [Mock Responses](/docs/guides/mock-responses) — return fake data without a backend
+- [JSON Config Reference](/docs/guides/json-config) — full configuration format

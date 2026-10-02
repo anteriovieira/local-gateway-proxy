@@ -2,7 +2,7 @@ import { Server } from 'http'
 import type { Request, Response, Application } from 'express'
 import type { BrowserWindow } from 'electron'
 import { MockDatabase, handleMockDbEndpoint, applyResponseTemplate } from '@proxy-app/shared'
-import type { MockDbSnapshot } from '@proxy-app/shared'
+import type { MockDbSnapshot, EndpointDef } from '@proxy-app/shared'
 
 // Use require for CommonJS compatibility with Electron main process
 const express = require('express')
@@ -70,7 +70,7 @@ function sendApiLog(workspaceId: string, apiLog: {
     responseHeaders?: Record<string, string>
 }, mainWindow: BrowserWindow | null, logId?: string, isUpdate: boolean = false) {
     if (mainWindow && !mainWindow.isDestroyed()) {
-        const finalId = logId || `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        const finalId = logId || `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
         mainWindow.webContents.send('api-log', {
             workspaceId,
             apiLog: {
@@ -86,7 +86,7 @@ function sendApiLog(workspaceId: string, apiLog: {
 interface WorkspaceConfig {
     workspaceId: string
     port: number
-    endpoints: any[]
+    endpoints: EndpointDef[]
     variables: Record<string, string>
 }
 
@@ -105,7 +105,7 @@ export class ServerManager {
         return null
     }
 
-    startServer(workspaceId: string, port: number, endpoints: any[], variables: Record<string, string>, bypassEnabled: boolean = false, bypassUri: string = '', mainWindow: BrowserWindow | null = null, mockDbConfig?: { initialData: string }) {
+    startServer(workspaceId: string, port: number, endpoints: EndpointDef[], variables: Record<string, string>, bypassEnabled: boolean = false, bypassUri: string = '', mainWindow: BrowserWindow | null = null, mockDbConfig?: { initialData: string }) {
         return new Promise<void>((resolve, reject) => {
             // Stop existing server for this workspace if any
             if (this.servers.has(workspaceId)) {
@@ -236,7 +236,7 @@ export class ServerManager {
             }
 
             // Register enabled endpoints (normal proxy behavior + mock)
-            endpoints.forEach((ep: any) => {
+            endpoints.forEach((ep) => {
                 if (ep.enabled === false) return // Skip disabled endpoints for normal routing
                 
                 // Allow for express style path params: /users/{id} -> /users/:id
@@ -251,7 +251,7 @@ export class ServerManager {
                         const requestUrl = `${req.protocol}://${req.get('host') || 'localhost'}${req.originalUrl}`
                         
                         // Generate unique log ID for this request (outside try block for error handling)
-                        const logId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+                        const logId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
                         
                         // Mock-db endpoint: CRUD against in-memory collection
                         if (ep.isMock && ep.mockDbCollection && mockDb) {
@@ -618,7 +618,7 @@ export class ServerManager {
                 // Create a catch-all middleware that redirects any unmatched route to bypassUri
                 app.use((req: Request, res: Response, next: any) => {
                     // Check if this request matches any enabled endpoint
-                    const matchesEnabledEndpoint = endpoints.some((ep: any) => {
+                    const matchesEnabledEndpoint = endpoints.some((ep) => {
                         if (ep.enabled === false) return false // Skip disabled endpoints
                         if (ep.method.toUpperCase() !== req.method.toUpperCase()) return false
                         
@@ -640,7 +640,7 @@ export class ServerManager {
                         const requestUrl = `${req.protocol}://${req.get('host') || 'localhost'}${req.originalUrl}`
                         
                         // Generate unique log ID for this request
-                        const logId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+                        const logId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
                         
                         try {
                             const startTime = Date.now()
@@ -670,13 +670,20 @@ export class ServerManager {
                             const userAgent = req.get('user-agent') || 'unknown'
                             const apiKey = req.get('authorization')?.replace(/^Bearer /, '') || req.get('x-api-key') || undefined
                             const idempotencyKey = req.get('idempotency-key') || req.get('x-idempotency-key') || undefined
+                            // Buffer request body manually (no body parser middleware registered)
+                            const requestChunks: Buffer[] = []
                             let requestBody = ''
-                            
-                            // Capture request body if present
-                            if (req.body && typeof req.body === 'object') {
-                                requestBody = JSON.stringify(req.body)
-                            } else if (typeof req.body === 'string') {
-                                requestBody = req.body
+                            if (['POST', 'PUT', 'PATCH'].includes(req.method) && req.readable) {
+                                req.on('data', (chunk: Buffer) => requestChunks.push(Buffer.from(chunk)))
+                                req.on('end', () => {
+                                    if (requestChunks.length > 0) {
+                                        try {
+                                            requestBody = Buffer.concat(requestChunks).toString('utf8')
+                                        } catch {
+                                            requestBody = '<unable to decode request body>'
+                                        }
+                                    }
+                                })
                             }
 
                             // Send initial API log with pending status (create new entry)

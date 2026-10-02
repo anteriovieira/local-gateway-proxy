@@ -1,13 +1,55 @@
 /**
- * Function injected into the page's main world via chrome.scripting.executeScript.
- * Runs in MAIN world so it can patch the page's fetch/XHR.
- * PREFIX and MAX are passed as args (no closure) for serialization.
+ * Patches fetch/XHR in the page's MAIN world, and in every same-origin Web Worker the page creates.
+ * Runs from the MAIN-world content script (content/fetch-patch-main.ts) at document_start, and as a
+ * fallback via chrome.scripting.executeScript.
+ *
+ * Must stay self-contained (no closure, no imports): it is serialized for executeScript and its own
+ * source is used to bootstrap workers. In a worker, WORKER_CHANNEL names a BroadcastChannel the page
+ * relays to the content script (workers can't reach content scripts), and WORKER_BASE is the
+ * worker's real script URL (the worker runs from a blob: URL, so relative URLs need it).
  */
-export function injectFetchPatch(PREFIX: string, MAX: number): void {
+export function injectFetchPatch(PREFIX: string, MAX: number, WORKER_CHANNEL?: string, WORKER_BASE?: string): void {
+    const g = self as unknown as Record<string, unknown> & typeof globalThis
+    const isWindow = typeof window !== 'undefined' && (g as unknown) === window
+
     // Prevent double-patching when extension reloads while page is open
     const guardKey = '__proxyApp_injected_' + PREFIX
-    if ((window as unknown as Record<string, boolean>)[guardKey]) return
-    ;(window as unknown as Record<string, boolean>)[guardKey] = true
+    if (g[guardKey]) return
+    g[guardKey] = true
+    if (isWindow) {
+      // DOM is shared with the isolated content script, so it can tell whether the patch is in place
+      try {
+        document.documentElement.setAttribute('data-proxy-app-patched', '1')
+      } catch {
+        // documentElement not available yet
+      }
+    }
+
+    // Page: window.postMessage to the content script. Worker: BroadcastChannel relayed by the page.
+    const channel = !isWindow && WORKER_CHANNEL && typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(WORKER_CHANNEL) : null
+    function send(msg: Record<string, unknown>): void {
+      if (isWindow) window.postMessage(msg, '*')
+      else channel?.postMessage(msg)
+    }
+    function onBridgeMessage(handler: (data: { type?: string; id?: unknown; result?: unknown }) => void): void {
+      if (isWindow) {
+        window.addEventListener('message', (e: MessageEvent) => {
+          if (e.source === window && e.data?.type) handler(e.data)
+        })
+      } else if (channel) {
+        channel.addEventListener('message', (e: MessageEvent) => {
+          if (e.data?.type) handler(e.data)
+        })
+      }
+    }
+
+    function absolute(u: string): string {
+      try {
+        return new URL(u, WORKER_BASE || location.href).href
+      } catch {
+        return u
+      }
+    }
 
     function path(u: string): string {
       try {
@@ -16,34 +58,105 @@ export function injectFetchPatch(PREFIX: string, MAX: number): void {
         return ''
       }
     }
-    const pendingFetches: Record<number, (r: unknown) => void> = {}
-    let nextId = 1
+    function reportBody(url: string, method: string, text: string | null, skipReason?: string): void {
+      let reason = skipReason
+      if (!reason && !text) reason = 'empty response body'
+      if (!reason && text && text.length > MAX) reason = `body too large (${text.length} chars > ${MAX})`
+      if (reason) {
+        send({ type: PREFIX + 'response-body-skip', payload: { url, method, reason } })
+        return
+      }
+      send({ type: PREFIX + 'response-body', payload: { url, method, pathname: path(url), body: text, timestamp: Date.now() } })
+    }
 
-    window.addEventListener('message', (e: MessageEvent) => {
-      if (e.source !== window || !e.data?.type || e.data.type !== PREFIX + 'fetch-result') return
-      const id = e.data.id
-      if (id != null && pendingFetches[id]) {
-        pendingFetches[id](e.data.result)
+    function xhrBody(x: XMLHttpRequest): { text: string | null; skip?: string } {
+      try {
+        if (x.responseType === '' || x.responseType === 'text') return { text: x.responseText }
+        if (x.responseType === 'json') return { text: x.response == null ? null : JSON.stringify(x.response) }
+        return { text: null, skip: `XHR responseType "${x.responseType}" is not text` }
+      } catch (err) {
+        return { text: null, skip: `failed to read XHR body: ${String(err)}` }
+      }
+    }
+
+    // Ids are unique per context so page and worker requests never collide in the shared relay
+    const ctxId = Math.random().toString(36).slice(2, 10)
+    const pendingFetches: Record<string, (r: unknown) => void> = {}
+    let nextSeq = 1
+    const nextId = () => `${ctxId}:${nextSeq++}`
+
+    onBridgeMessage((data) => {
+      if (data.type !== PREFIX + 'fetch-result') return
+      const id = String(data.id)
+      if (pendingFetches[id]) {
+        pendingFetches[id](data.result)
         delete pendingFetches[id]
       }
     })
 
-    const origFetch = window.fetch
-    window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
+    if (isWindow && typeof Worker !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+      patchWorkers()
+    }
+
+    /**
+     * Boot each same-origin worker with this patch before its own script, so requests made from
+     * workers (e.g. Comlink workers) are proxied and logged too.
+     */
+    function patchWorkers(): void {
+      const OrigWorker = Worker
+      const selfSource = injectFetchPatch.toString()
+      const Wrapped = function (scriptURL: string | URL, options?: WorkerOptions): Worker {
+        let abs: URL
+        try {
+          abs = new URL(String(scriptURL), location.href)
+        } catch {
+          return new OrigWorker(scriptURL, options)
+        }
+        if (abs.origin !== location.origin) return new OrigWorker(scriptURL, options)
+        try {
+          const channelName = PREFIX + 'worker:' + Math.random().toString(36).slice(2)
+          const ch = new BroadcastChannel(channelName)
+          // worker -> content script
+          ch.addEventListener('message', (e: MessageEvent) => {
+            if (typeof e.data?.type === 'string' && e.data.type.indexOf(PREFIX) === 0) window.postMessage(e.data, '*')
+          })
+          // content script -> worker (workers ignore ids they don't own)
+          window.addEventListener('message', (e: MessageEvent) => {
+            if (e.source === window && e.data?.type === PREFIX + 'fetch-result') ch.postMessage(e.data)
+          })
+          const boot = `(${selfSource})(${JSON.stringify(PREFIX)}, ${MAX}, ${JSON.stringify(channelName)}, ${JSON.stringify(abs.href)});`
+          const bootUrl = URL.createObjectURL(new Blob([boot], { type: 'text/javascript' }))
+          // Module imports evaluate in order, so the patch runs before the worker's own code
+          const entry =
+            options?.type === 'module'
+              ? `import ${JSON.stringify(bootUrl)};\nimport ${JSON.stringify(abs.href)};`
+              : `importScripts(${JSON.stringify(bootUrl)}, ${JSON.stringify(abs.href)});`
+          return new OrigWorker(URL.createObjectURL(new Blob([entry], { type: 'text/javascript' })), options)
+        } catch {
+          return new OrigWorker(scriptURL, options)
+        }
+      } as unknown as typeof Worker
+      Wrapped.prototype = OrigWorker.prototype
+      ;(window as unknown as { Worker: typeof Worker }).Worker = Wrapped
+    }
+
+    const origFetch = g.fetch
+    g.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+      const rawUrl = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input)
+      const url = absolute(rawUrl)
       const method = ((init?.method ?? (input instanceof Request ? input.method : 'GET')) || 'GET').toUpperCase()
 
       try {
-        const req = input instanceof Request ? input : new Request(input, init)
+        const req = input instanceof Request ? input : new Request(url, init)
         const headers: Record<string, string> = {}
         req.headers.forEach((v, k) => {
           headers[k] = v
         })
         const body = req.body ? await req.clone().arrayBuffer() : null
-        const id = nextId++
+        const id = nextId()
         const r = await new Promise<unknown>((resolve) => {
           pendingFetches[id] = resolve
-          window.postMessage({ type: PREFIX + 'fetch', id, url, method, headers, body }, '*')
+          send({ type: PREFIX + 'fetch', id, url, method, headers, body })
           setTimeout(() => {
             if (pendingFetches[id]) {
               delete pendingFetches[id]
@@ -64,36 +177,29 @@ export function injectFetchPatch(PREFIX: string, MAX: number): void {
         // fall through
       }
 
-      const response = await origFetch.apply(this, arguments as unknown as [RequestInfo | URL, RequestInit?])
-      try {
-        const clone = response.clone()
-        const text = await clone.text()
-        const respUrl = response.url || url
-        if (text && text.length <= MAX) {
-          window.postMessage(
-            {
-              type: PREFIX + 'response-body',
-              payload: { url: respUrl, method, pathname: path(respUrl), body: text, timestamp: Date.now() },
-            },
-            '*'
-          )
-        }
-      } catch {
-        // ignore
-      }
+      const response = await origFetch.call(this, typeof input === 'string' && url !== input ? url : input, init)
+      const respUrl = response.url || url
+      response
+        .clone()
+        .text()
+        .then((text) => reportBody(respUrl, method, text))
+        .catch((err) => reportBody(respUrl, method, null, `failed to read fetch body: ${String(err)}`))
       return response
     }
 
-    const XHR = window.XMLHttpRequest
+    const XHR = g.XMLHttpRequest
     const origOpen = XHR.prototype.open
     const origSend = XHR.prototype.send
     const origSetRequestHeader = XHR.prototype.setRequestHeader
 
     XHR.prototype.open = function (method: string, url: string) {
-      ;(this as unknown as { __cu: string; __cm: string; __xhrHeaders: Record<string, string> }).__cu = url
+      ;(this as unknown as { __cu: string; __cm: string; __xhrHeaders: Record<string, string> }).__cu = absolute(String(url))
       ;(this as unknown as { __cu: string; __cm: string; __xhrHeaders: Record<string, string> }).__cm = (method || 'GET').toUpperCase()
       ;(this as unknown as { __cu: string; __cm: string; __xhrHeaders: Record<string, string> }).__xhrHeaders = {}
-      return origOpen.apply(this, arguments as unknown as [string, string, boolean])
+      // In a blob-hosted worker, relative URLs must resolve against the worker's real script URL
+      const args = Array.prototype.slice.call(arguments) as [string, string, boolean]
+      if (WORKER_BASE) args[1] = absolute(String(url))
+      return origOpen.apply(this, args)
     }
 
     XHR.prototype.setRequestHeader = function (name: string, value: string) {
@@ -119,7 +225,7 @@ export function injectFetchPatch(PREFIX: string, MAX: number): void {
         }
       }
 
-      const id = nextId++
+      const id = nextId()
 
       pendingFetches[id] = (r: unknown) => {
         const res = r as { proxied?: boolean; status?: number; statusText?: string; headers?: Record<string, string>; body?: number[] }
@@ -164,26 +270,8 @@ export function injectFetchPatch(PREFIX: string, MAX: number): void {
         } else {
           // Not proxied — send original XHR and capture response body for logging
           function onLoad(this: XMLHttpRequest) {
-            try {
-              const t = this.responseText
-              if (t && t.length <= MAX) {
-                window.postMessage(
-                  {
-                    type: PREFIX + 'response-body',
-                    payload: {
-                      url: this.responseURL || u,
-                      method: m,
-                      pathname: path(this.responseURL || u),
-                      body: t,
-                      timestamp: Date.now(),
-                    },
-                  },
-                  '*'
-                )
-              }
-            } catch {
-              // ignore
-            }
+            const { text, skip } = xhrBody(this)
+            reportBody(this.responseURL || u, m, text, skip)
           }
           if (x.addEventListener) {
             x.addEventListener('load', onLoad)
@@ -198,19 +286,15 @@ export function injectFetchPatch(PREFIX: string, MAX: number): void {
         }
       }
 
-      window.postMessage({ type: PREFIX + 'fetch', id, url: u, method: m, headers: capturedHeaders, body: bodyToSend }, '*')
+      send({ type: PREFIX + 'fetch', id, url: u, method: m, headers: capturedHeaders, body: bodyToSend })
       // Do NOT call origSend here — wait for proxy check response
       // Fallback: if no response arrives within 30s, send original XHR
       setTimeout(() => {
         if (pendingFetches[id]) {
           delete pendingFetches[id]
           function onLoad(this: XMLHttpRequest) {
-            try {
-              const t = this.responseText
-              if (t && t.length <= MAX) {
-                window.postMessage({ type: PREFIX + 'response-body', payload: { url: this.responseURL || u, method: m, pathname: path(this.responseURL || u), body: t, timestamp: Date.now() } }, '*')
-              }
-            } catch { /* ignore */ }
+            const { text, skip } = xhrBody(this)
+            reportBody(this.responseURL || u, m, text, skip)
           }
           if (x.addEventListener) {
             x.addEventListener('load', onLoad)

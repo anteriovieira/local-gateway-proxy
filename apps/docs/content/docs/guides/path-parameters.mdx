@@ -1,0 +1,112 @@
+---
+title: Path Parameters
+description: Using dynamic path parameters with {paramName} syntax.
+---
+
+Path parameters let you define dynamic segments in your endpoint paths. They are extracted from the incoming request URL and substituted into the target URI template.
+
+## Syntax
+
+Path parameters use curly braces in the path pattern:
+
+```
+/users/{userId}
+/posts/{postId}/comments/{commentId}
+/api/{version}/resources/{id}
+```
+
+## How Path Parameters Work
+
+### 1. Define in your config
+
+```json
+{
+  "paths": {
+    "/users/{userId}/posts/{postId}": {
+      "get": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://api.example.com/users/{userId}/posts/{postId}"
+        }
+      }
+    }
+  }
+}
+```
+
+### 2. Request arrives
+
+```
+GET /users/42/posts/7
+```
+
+### 3. Parameters are extracted
+
+| Parameter | Value |
+|-----------|-------|
+| `userId` | `42` |
+| `postId` | `7` |
+
+### 4. URI template is resolved
+
+```
+https://api.example.com/users/42/posts/7
+```
+
+## Path Parameters vs Stage Variables
+
+These two types of placeholders serve different purposes:
+
+| Feature | Path Parameters | Stage Variables |
+|---------|----------------|-----------------|
+| Syntax | `{paramName}` | `${stageVariables.name}` |
+| Source | Extracted from request URL | Set manually in Variables tab |
+| Changes per | Request | Environment |
+| Example | `{id}` → `42` | `${stageVariables.host}` → `api.prod.com` |
+
+Both can be used in the same URI template:
+
+```
+https://${stageVariables.host}/api/users/{userId}
+```
+
+## Matching Rules
+
+Path parameters match any non-empty URL segment (everything between `/` characters):
+
+| Pattern | URL | Match? | Params |
+|---------|-----|--------|--------|
+| `/users/{id}` | `/users/42` | Yes | `id: "42"` |
+| `/users/{id}` | `/users/abc` | Yes | `id: "abc"` |
+| `/users/{id}` | `/users/` | No | — |
+| `/users/{id}` | `/users` | No | — |
+| `/{a}/{b}` | `/foo/bar` | Yes | `a: "foo", b: "bar"` |
+
+## Multiple Parameters
+
+You can use multiple path parameters in a single path. Each `{...}` segment is extracted independently:
+
+```json
+{
+  "paths": {
+    "/orgs/{orgId}/teams/{teamId}/members/{memberId}": {
+      "get": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://api.example.com/v1/orgs/{orgId}/teams/{teamId}/members/{memberId}"
+        }
+      }
+    }
+  }
+}
+```
+
+A request to `/orgs/acme/teams/engineering/members/user-1` resolves to:
+
+```
+https://api.example.com/v1/orgs/acme/teams/engineering/members/user-1
+```
+
+<Callout type="info">
+Path parameters are automatically extracted — you don't need to define them in the Variables tab. Only stage variables (`${...}`) need manual values.
+</Callout>

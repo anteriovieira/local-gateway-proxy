@@ -1,0 +1,188 @@
+---
+title: Configuration Reference
+description: Complete schema reference for the Proxy App JSON configuration.
+---
+
+This is the complete reference for the JSON configuration format used by Proxy App. The format is compatible with AWS API Gateway REST API exports.
+
+## Schema Overview
+
+```json
+{
+  "basePath?": "string",
+  "paths": {
+    "{pathPattern}": {
+      "{httpMethod}": {
+        "{integrationProperty}": {
+          "type": "http_proxy | http | mock",
+          "uri?": "string",
+          "responses?": {
+            "default": {
+              "responseTemplates": {
+                "application/json": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Fields
+
+### `basePath` (optional)
+
+A prefix prepended to all path patterns. Useful when your API is mounted under a subpath.
+
+- Type: `string`
+- Default: `""` (empty)
+- Trailing slashes are trimmed automatically
+
+```json
+{ "basePath": "/api/v1" }
+```
+
+With `basePath: "/api/v1"`, a path `/users` becomes `/api/v1/users`.
+
+### `paths` (required)
+
+An object where each key is a URL path pattern and each value defines the HTTP methods available at that path.
+
+### Path Pattern
+
+Path keys support static segments and dynamic parameters:
+
+| Pattern | Example Match |
+|---------|--------------|
+| `/users` | `/users` |
+| `/users/{id}` | `/users/42`, `/users/abc` |
+| `/orgs/{orgId}/repos/{repoId}` | `/orgs/acme/repos/frontend` |
+
+### HTTP Method Object
+
+Each path contains one or more HTTP method keys. Methods are case-insensitive.
+
+```json
+{
+  "/users": {
+    "get": { ... },
+    "post": { ... }
+  }
+}
+```
+
+### Integration Property
+
+Each method object must contain an integration definition. The default key is `x-amazon-apigateway-integration`, but this is configurable per workspace via the `integrationProperty` setting.
+
+## Integration Types
+
+### `http_proxy` (default)
+
+Proxies the request to the specified URI. This is the default behavior when `type` is `"http_proxy"`, `"http"`, or omitted.
+
+```json
+{
+  "x-amazon-apigateway-integration": {
+    "type": "http_proxy",
+    "uri": "https://${stageVariables.host}/api/users/{id}"
+  }
+}
+```
+
+**URI template placeholders:**
+
+| Placeholder | Syntax | Resolved from |
+|-------------|--------|---------------|
+| Stage variable | `${stageVariables.name}` | Workspace Variables tab |
+| Path parameter | `{paramName}` | Request URL segment |
+
+### `mock`
+
+Returns a static response without making a network request.
+
+```json
+{
+  "x-amazon-apigateway-integration": {
+    "type": "mock",
+    "responses": {
+      "default": {
+        "responseTemplates": {
+          "application/json": "{\"status\": \"ok\"}"
+        }
+      }
+    }
+  }
+}
+```
+
+**Response template lookup order:**
+
+1. `responseTemplates["application/json"]`
+2. `responseTemplates["*/*"]`
+3. `responseTemplates` as a raw string (fallback)
+
+**Response key lookup order:**
+
+1. `responses.default`
+2. `responses["200"]`
+
+## EndpointDef Type Reference
+
+When the config is parsed, each path + method combination creates an `EndpointDef` object:
+
+```typescript
+interface EndpointDef {
+  path: string              // URL path pattern
+  method: string            // HTTP method (uppercase)
+  uriTemplate: string       // Target URL template (or "(mock)")
+  variableNames?: string[]  // Extracted ${...} variable names
+  enabled?: boolean         // Toggle in Endpoints tab
+  isMock?: boolean          // true for mock integrations
+  mockResponse?: string     // Static response body
+  mockStatusCode?: number   // HTTP status code (UI-configurable)
+  mockHeaders?: Record<string, string> // Response headers
+  mockDelay?: number        // Simulated delay in ms
+  mockDbCollection?: string // Mock database collection name
+  mockResponseTemplate?: string // Template wrapping DB result
+}
+```
+
+## Workspace Type Reference
+
+Each workspace stores the full runtime state:
+
+```typescript
+interface Workspace {
+  id: string
+  name: string
+  port: number                    // Server port (desktop only)
+  configContent: string           // Raw JSON config string
+  endpoints: EndpointDef[]        // Parsed endpoints
+  variables: Record<string, string> // Variable values
+  isRunning: boolean
+  bypassEnabled?: boolean         // Forward unmatched requests
+  bypassUri?: string              // Bypass target URL
+  captureResourceTypes?: string[] // Resource types to log (ext.)
+  urlMustContain?: string         // URL filter for logging (ext.)
+  mockDbConfig?: MockDbConfig     // Mock database initial data
+}
+```
+
+## Parsing Behavior
+
+The parser (`parseGatewayConfig`) processes the config as follows:
+
+1. Parse the JSON string
+2. Read `basePath` (default: empty)
+3. Iterate over each `paths` entry
+4. For each path, iterate over each HTTP method
+5. Read the integration object from the configured property name
+6. If `type` is `"mock"`: extract the response body from `responseTemplates`
+7. If `type` is `"http_proxy"`, `"http"`, or undefined: extract the `uri` template
+8. Scan the URI for `${...}` variables using `/\$\{([a-zA-Z0-9_.]+)\}/g`
+9. Return the list of endpoints and the set of unique variable names
+
+If the JSON is invalid or missing required fields, the parser returns empty endpoints and variables without throwing.

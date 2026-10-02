@@ -1,0 +1,100 @@
+---
+title: Stage Variables
+description: Using environment variables with ${stageVariables.name} syntax.
+---
+
+Stage variables let you parameterize your endpoint URIs so a single configuration works across different environments (development, staging, production) by changing variable values instead of editing URLs.
+
+## Syntax
+
+Stage variables use the `${variableName}` syntax in URI templates:
+
+```
+https://${stageVariables.apiHost}/api/v1/users
+```
+
+The most common convention follows the AWS API Gateway pattern:
+
+```
+${stageVariables.variableName}
+```
+
+But any `${...}` placeholder is treated as a variable:
+
+```
+${customVar}
+${stageVariables.host}
+${env.API_KEY}
+```
+
+## How Variables Are Extracted
+
+When you paste a JSON config, the parser scans all `uri` values for `${...}` patterns using the regex:
+
+```
+/\$\{([a-zA-Z0-9_.]+)\}/g
+```
+
+Every unique match becomes a variable that appears in the **Variables** tab for you to fill in.
+
+## Setting Variable Values
+
+1. Switch to the **Variables** tab in your workspace
+2. Each extracted variable is listed with an input field
+3. Enter the value for each variable
+
+### Example
+
+Given this config:
+
+```json
+{
+  "paths": {
+    "/users/{id}": {
+      "get": {
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "uri": "https://${stageVariables.apiHost}/api/${stageVariables.version}/users/{id}"
+        }
+      }
+    }
+  }
+}
+```
+
+The Variables tab shows:
+
+| Variable | Value |
+|----------|-------|
+| `stageVariables.apiHost` | `api.staging.example.com` |
+| `stageVariables.version` | `v2` |
+
+When a request to `/users/42` arrives, the target URL resolves to:
+
+```
+https://api.staging.example.com/api/v2/users/42
+```
+
+## Switching Environments
+
+To switch from staging to production, change the variable values:
+
+| Variable | Staging | Production |
+|----------|---------|------------|
+| `stageVariables.apiHost` | `api.staging.example.com` | `api.example.com` |
+| `stageVariables.version` | `v2` | `v1` |
+
+No need to edit the JSON config — just update the values and restart the server (desktop) or the proxy will use the new values on the next request (extension).
+
+## Variable Resolution
+
+Variables are resolved at request time. The resolution order is:
+
+1. **Stage variables** — replaced from the workspace's variable mapping
+2. **Path parameters** — replaced from the matched request URL (see [Path Parameters](/docs/guides/path-parameters))
+
+If a required variable is not set, the proxy will throw an error and log it.
+
+<Callout type="warn">
+Variable names are **case-sensitive**. `${stageVariables.ApiHost}` and `${stageVariables.apiHost}` are different variables.
+</Callout>
