@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import type { Workspace, EndpointDef } from '../../types'
 import { cn } from '@proxy-app/ui'
-import { Plus, Trash2, ChevronDown, ChevronRight, Check, Database, Server } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronRight, Check, Database, Server, Maximize2, Minimize2, WandSparkles } from 'lucide-react'
 import { JsonEditor } from '../JsonEditor'
 
 interface MockPanelProps {
@@ -10,6 +10,61 @@ interface MockPanelProps {
 }
 
 const METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'ANY'] as const
+
+interface ResponseBodyFieldProps {
+  value: string
+  onChange: (value: string) => void
+}
+
+function ResponseBodyField({ value, onChange }: ResponseBodyFieldProps) {
+  const [expanded, setExpanded] = useState(false)
+  const [formatError, setFormatError] = useState<string | null>(null)
+
+  const beautify = () => {
+    if (!value.trim()) return
+    try {
+      onChange(JSON.stringify(JSON.parse(value), null, 2))
+      setFormatError(null)
+    } catch (err) {
+      setFormatError(err instanceof Error ? err.message : 'Invalid JSON')
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] text-zinc-500 uppercase tracking-wider">Response Body</label>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={beautify}
+            disabled={!value.trim()}
+            className="flex items-center gap-1 px-1.5 py-0.5 text-[10px] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
+            title="Format JSON"
+          >
+            <WandSparkles className="w-3 h-3" />
+            Beautify
+          </button>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="p-1 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded transition-colors"
+            title={expanded ? 'Collapse editor' : 'Expand editor'}
+          >
+            {expanded ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+          </button>
+        </div>
+      </div>
+      <JsonEditor
+        value={value}
+        onChange={(code) => {
+          setFormatError(null)
+          onChange(code)
+        }}
+        height={expanded ? '60vh' : '120px'}
+      />
+      {formatError && <div className="text-[10px] text-red-400 font-mono break-all">Can't format: {formatError}</div>}
+    </div>
+  )
+}
 
 function getMethodColor(method: string) {
   switch (method.toLowerCase()) {
@@ -329,14 +384,10 @@ export const MockPanel: React.FC<MockPanelProps> = ({ workspace, onUpdate }) => 
                           </div>
 
                           {/* Response Body */}
-                          <div className="flex flex-col gap-1.5">
-                            <label className="text-[10px] text-zinc-500 uppercase tracking-wider">Response Body</label>
-                            <JsonEditor
-                              value={ep.mockResponse ?? ''}
-                              onChange={(code) => updateEndpoint(originalIndex, { mockResponse: code })}
-                              height="120px"
-                            />
-                          </div>
+                          <ResponseBodyField
+                            value={ep.mockResponse ?? ''}
+                            onChange={(code) => updateEndpoint(originalIndex, { mockResponse: code })}
+                          />
                         </>
                       )}
                     </div>
