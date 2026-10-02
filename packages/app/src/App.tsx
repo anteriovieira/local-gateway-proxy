@@ -217,6 +217,14 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
     setWorkspaces((prev) =>
       prev.map((ws) => {
         if (ws.id !== id) return ws
+        // URL filter applies to already captured logs too, not only new requests
+        const urlFilter = updates.urlMustContain?.trim().toLowerCase()
+        if ('urlMustContain' in updates && urlFilter) {
+          ws = {
+            ...ws,
+            apiLogs: ws.apiLogs.filter((log) => (log.requestUrl ?? log.path).toLowerCase().includes(urlFilter)),
+          }
+        }
         const shouldReparse = updates.configContent !== undefined && updates.configContent !== ws.configContent
         const integrationPropChanged = updates.integrationProperty !== undefined
         if (shouldReparse || integrationPropChanged) {
@@ -249,7 +257,8 @@ export function App({ nativeWindowDrag = false, variant = 'desktop' }: { nativeW
     }
 
     // Sync URL filter to background proxy state if workspace is running
-    if (updates.urlMustContain !== undefined && adapter.updateUrlFilter) {
+    // `in` check: clearing the field sends undefined, which must still reach the background
+    if ('urlMustContain' in updates && adapter.updateUrlFilter) {
       const ws = workspaces.find((w) => w.id === id)
       if (ws?.isRunning) {
         adapter.updateUrlFilter(updates.urlMustContain)

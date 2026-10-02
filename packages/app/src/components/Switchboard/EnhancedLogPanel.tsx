@@ -4,7 +4,7 @@ import { matchPath } from '@proxy-app/shared'
 import type { EndpointDef } from '@proxy-app/shared'
 import { Search, X, Trash2, ListRestart, Split, Loader2, Info, FileJson, LayoutList, Timer, ChevronUp, ChevronDown } from 'lucide-react'
 import { CopyButton, ResizablePanelGroup, ResizablePanel, ResizableHandle, Tabs, TabsList, TabsTrigger, TabsContent, cn } from '@proxy-app/ui'
-import { LogDetailHeader, HeadersSection, RequestSection, BodyView } from './LogDetail'
+import { LogDetailHeader, HeadersSection, RequestSection, BodyView, UrlText } from './LogDetail'
 
 interface EnhancedLogPanelProps {
   apiLogs: ApiLogEntry[]
@@ -227,15 +227,6 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
     setSearchQuery('')
   }
 
-  const parseQueryParams = (url: string): [string, string][] => {
-    try {
-      const u = new URL(url)
-      return Array.from(u.searchParams.entries())
-    } catch {
-      return []
-    }
-  }
-
   const formatDuration = (ms: number) => (ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(2)}s`)
 
   const renderTiming = (log: ApiLogEntry) => {
@@ -303,7 +294,6 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
   }
 
   const renderLogDetailContent = (log: ApiLogEntry) => {
-    const queryParams = parseQueryParams(log.requestUrl || log.targetUrl || '')
     const hasRequestHeaders = log.requestHeaders && Object.keys(log.requestHeaders).length > 0
     const hasResponseHeaders = log.responseHeaders && Object.keys(log.responseHeaders).length > 0
     const hasHeaders = hasRequestHeaders || hasResponseHeaders
@@ -387,7 +377,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                     <div className="group flex flex-col gap-0.5">
                       <span className="text-xs text-zinc-500">Original:</span>
                       <div className="flex items-start gap-1">
-                        <span className="text-xs text-zinc-300 font-mono break-all">{log.requestUrl}</span>
+                        <span className="text-xs font-mono break-all"><UrlText url={log.requestUrl} /></span>
                         <CopyButton text={log.requestUrl} iconSize="w-3 h-3" className="p-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="Copy original URL" />
                       </div>
                     </div>
@@ -404,7 +394,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                       {log.targetUrl && (
                         <>
                           <span className="text-xs text-zinc-500"> to </span>
-                          <span className="text-xs text-zinc-300 font-mono break-all">{log.targetUrl}</span>
+                          <span className="text-xs font-mono break-all"><UrlText url={log.targetUrl} /></span>
                           <CopyButton text={log.targetUrl} iconSize="w-3 h-3" className="p-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="Copy target URL" />
                         </>
                       )}
@@ -413,7 +403,7 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                     <div className="group flex flex-col gap-0.5">
                       <span className="text-xs text-zinc-500">Proxied to:</span>
                       <div className="flex items-start gap-1">
-                        <span className="text-xs text-zinc-300 font-mono break-all">{log.targetUrl}</span>
+                        <span className="text-xs font-mono break-all"><UrlText url={log.targetUrl} /></span>
                         <CopyButton text={log.targetUrl} iconSize="w-3 h-3" className="p-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="Copy target URL" />
                       </div>
                     </div>
@@ -449,33 +439,20 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                   <CopyButton text={log.idempotencyKey} iconSize="w-3 h-3" className="p-1 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100" title="Copy idempotency key" />
                 </div>
               )}
-              {queryParams.length > 0 && (
+              {log.captureTrace && log.captureTrace.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <div className="text-xs font-medium text-zinc-400">Query Parameters</div>
-                    <CopyButton
-                      text={queryParams.map(([key, value]) => `${key}=${value}`).join('\n')}
-                      iconSize="w-3.5 h-3.5"
-                      title="Copy query parameters"
-                    />
+                    <div className="text-xs font-medium text-zinc-400">Capture Trace</div>
+                    <CopyButton text={log.captureTrace.join('\n')} iconSize="w-3.5 h-3.5" title="Copy capture trace" />
                   </div>
-                  <div className="overflow-x-auto rounded border border-zinc-700">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-zinc-700 bg-zinc-800/50">
-                          <th className="px-3 py-2 text-left font-medium text-zinc-500">Key</th>
-                          <th className="px-3 py-2 text-left font-medium text-zinc-500">Value</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {queryParams.map(([key, value]) => (
-                          <tr key={key} className="border-b border-zinc-800/50 last:border-0">
-                            <td className="px-3 py-2 font-mono text-zinc-300">{key}</td>
-                            <td className="px-3 py-2 font-mono text-zinc-400 break-all">{value}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="bg-zinc-900/80 border border-zinc-700 rounded-md p-3 overflow-auto max-h-[240px] custom-scrollbar">
+                    <ol className="space-y-1">
+                      {log.captureTrace.map((step: string, i: number) => (
+                        <li key={i} className="text-xs font-mono text-zinc-400 break-all">
+                          {step}
+                        </li>
+                      ))}
+                    </ol>
                   </div>
                 </div>
               )}
@@ -488,7 +465,6 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
               <RequestSection log={log} />
             </TabsContent>
             <TabsContent value="response" className="mt-0">
-            <div className="space-y-2">
               <BodyView
                 title="Response Body"
                 body={(log.status === 'completed' || log.status === 'error') ? log.responseBody : undefined}
@@ -496,24 +472,6 @@ export const EnhancedLogPanel: React.FC<EnhancedLogPanelProps> = ({
                   ? 'Response body not captured (may appear shortly if captured from page)'
                   : 'No response body captured'}
               />
-              {log.captureTrace && log.captureTrace.length > 0 && (
-                <div className="space-y-2 pt-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-zinc-300">Capture Trace</h3>
-                    <CopyButton text={log.captureTrace.join('\n')} title="Copy capture trace" />
-                  </div>
-                  <div className="bg-zinc-900/80 border border-zinc-700 rounded-md p-3 overflow-auto max-h-[240px] custom-scrollbar">
-                    <ol className="space-y-1">
-                      {log.captureTrace.map((step, i) => (
-                        <li key={i} className="text-xs font-mono text-zinc-400 break-all">
-                          {step}
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                </div>
-              )}
-            </div>
             </TabsContent>
             <TabsContent value="timing" className="mt-0">
               {renderTiming(log)}

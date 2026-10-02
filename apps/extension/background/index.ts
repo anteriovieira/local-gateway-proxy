@@ -1,5 +1,5 @@
 import { activateProxy, deactivateProxy, getProxyState, updateProxyEndpoints, updateProxyUrlFilter, restoreProxyState } from './proxy-engine'
-import { initRequestLogger, getLogs, clearLogs, updateLogWithResponseBody, setTabPatchStatus, tracePageEvent } from './request-logger'
+import { initRequestLogger, getLogs, clearLogs, pruneLogsByUrlFilter, updateLogWithResponseBody, setTabPatchStatus, tracePageEvent } from './request-logger'
 import { handleProxyFetch, initMockDb, destroyMockDb, getMockDb, restoreMockDb } from './proxy-fetch'
 import { injectFetchPatch } from './inject-fetch-patch'
 import { MAX_RESPONSE_BODY_SIZE, PROXY_APP_PREFIX } from './constants'
@@ -186,6 +186,7 @@ async function handleMessage(message: { type: string; payload?: unknown }): Prom
     case 'update-url-filter': {
       const { urlMustContain } = (message.payload || {}) as { urlMustContain?: string }
       updateProxyUrlFilter(urlMustContain)
+      pruneLogsByUrlFilter()
       return { success: true }
     }
 

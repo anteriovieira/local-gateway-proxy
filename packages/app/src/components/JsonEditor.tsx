@@ -54,6 +54,14 @@ const theme = EditorView.theme({
   '.cm-content': {
     caretColor: '#a1a1aa',
   },
+  '.cm-foldGutter .cm-gutterElement': {
+    color: '#71717a',
+    cursor: 'pointer',
+    padding: '0 4px',
+  },
+  '.cm-foldGutter .cm-gutterElement:hover': {
+    color: '#e4e4e7',
+  },
   '.cm-foldPlaceholder': {
     backgroundColor: '#27272a',
     border: 'none',

@@ -395,6 +395,19 @@ export function clearLogs(): void {
 }
 
 /**
+ * Drop logs that don't match the current URL filter (called when the filter changes).
+ */
+export function pruneLogsByUrlFilter(): void {
+    const kept = logs.filter((l) => shouldCaptureByUrlFilter(l.requestUrl ?? l.path))
+    if (kept.length === logs.length) return
+    const keptIds = new Set(kept.map((l) => l.id))
+    for (const [requestId, pending] of pendingRequests) {
+        if (!keptIds.has(pending.logId)) pendingRequests.delete(requestId)
+    }
+    logs = kept
+}
+
+/**
  * Add a log entry for a request proxied through the content script (no webRequest event).
  * Called from proxy-fetch when a request is successfully proxied.
  */

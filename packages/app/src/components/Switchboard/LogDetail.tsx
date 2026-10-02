@@ -16,6 +16,8 @@ import {
   Terminal,
   Eye,
   EyeOff,
+  ChevronsUpDown,
+  ChevronsDownUp,
 } from 'lucide-react'
 import {
   CopyButton,
@@ -27,8 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@proxy-app/ui'
-import { highlight, languages } from 'prismjs'
-import 'prismjs/components/prism-json'
+import { JsonView, useJsonViewCommand, tryParseJson } from '../JsonView'
 
 type HeaderRow = [string, string]
 
@@ -43,6 +44,24 @@ const parseLogUrl = (log: ApiLogEntry) => {
   } catch {
     return null
   }
+}
+
+/** URL with the path highlighted; origin and query muted. `pathOnly` renders just the path. */
+export const UrlText: React.FC<{ url: string; pathOnly?: boolean }> = ({ url, pathOnly }) => {
+  let parsed: URL | null = null
+  try {
+    parsed = new URL(url)
+  } catch {
+    // not an absolute URL; render as-is
+  }
+  if (!parsed) return <span className="text-zinc-100">{url}</span>
+  return (
+    <>
+      {!pathOnly && <span className="text-zinc-500">{parsed.origin}</span>}
+      <span className="text-zinc-100">{parsed.pathname}</span>
+      {!pathOnly && <span className="text-zinc-500">{parsed.search}</span>}
+    </>
+  )
 }
 
 const findHeader = (headers: Record<string, string> | undefined, name: string) =>
@@ -75,19 +94,6 @@ const toFetch = (log: ApiLogEntry) => {
 
 const copyText = (text: string) => {
   navigator.clipboard.writeText(text).catch((err) => console.error('Failed to copy text:', err))
-}
-
-const renderJsonHtml = (body: string) => {
-  try {
-    return highlight(JSON.stringify(JSON.parse(body), null, 2), languages.json, 'json')
-  } catch {
-    return body
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;')
-  }
 }
 
 const statusBadgeColor = (log: ApiLogEntry) => {
@@ -140,16 +146,8 @@ export const LogDetailHeader: React.FC<LogDetailHeaderProps> = ({ log, inDefinit
         >
           {log.method}
         </span>
-        <p className="flex-1 min-w-0 px-3 py-2 text-xs font-mono break-all">
-          {url ? (
-            <>
-              <span className="text-zinc-500">{url.origin}</span>
-              <span className="text-zinc-100">{url.pathname}</span>
-              <span className="text-zinc-500">{url.search}</span>
-            </>
-          ) : (
-            <span className="text-zinc-100">{logUrl(log)}</span>
-          )}
+        <p className="flex-1 min-w-0 px-3 py-2 text-xs font-mono break-all" title={logUrl(log)}>
+          <UrlText url={logUrl(log)} pathOnly />
         </p>
         <CopyButton text={logUrl(log)} title="Copy URL" iconSize="w-3.5 h-3.5" className="rounded-none px-2" />
         <DropdownMenu>
@@ -234,26 +232,43 @@ export const LogDetailHeader: React.FC<LogDetailHeaderProps> = ({ log, inDefinit
 // Body viewer
 // ---------------------------------------------------------------------------
 
-export const BodyView: React.FC<{ title: string; body?: string; empty: string }> = ({ title, body, empty }) => (
-  <div className="space-y-2">
-    <div className="flex items-center justify-between gap-2">
-      <h3 className="text-sm font-semibold text-zinc-300">{title}</h3>
-      {body && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-600">{formatBytes(body)}</span>
-          <CopyButton text={body} title={`Copy ${title.toLowerCase()}`} />
-        </div>
-      )}
+export const BodyView: React.FC<{ title: string; body?: string; empty: string }> = ({ title, body, empty }) => {
+  const { command, expandAll, collapseAll } = useJsonViewCommand()
+  const parsed = tryParseJson(body)
+  const isTree = parsed.ok && parsed.value !== null && typeof parsed.value === 'object'
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold text-zinc-300">{title}</h3>
+        {body && (
+          <div className="flex items-center gap-2">
+            {isTree && (
+              <>
+                <button onClick={expandAll} className="p-1.5 hover:bg-zinc-800 rounded transition-colors" title="Expand all">
+                  <ChevronsUpDown className="w-3.5 h-3.5 text-zinc-400" />
+                </button>
+                <button onClick={collapseAll} className="p-1.5 hover:bg-zinc-800 rounded transition-colors" title="Collapse all">
+                  <ChevronsDownUp className="w-3.5 h-3.5 text-zinc-400" />
+                </button>
+              </>
+            )}
+            <span className="text-xs text-zinc-600">{formatBytes(body)}</span>
+            <CopyButton text={body} title={`Copy ${title.toLowerCase()}`} />
+          </div>
+        )}
+      </div>
+      <div className="bg-zinc-900/80 border border-zinc-700 rounded-md p-4 overflow-auto max-h-[320px] custom-scrollbar">
+        {!body ? (
+          <p className="text-xs text-zinc-500 italic">{empty}</p>
+        ) : parsed.ok ? (
+          <JsonView value={parsed.value} command={command} />
+        ) : (
+          <pre className="text-xs font-mono whitespace-pre-wrap break-all text-zinc-300">{body}</pre>
+        )}
+      </div>
     </div>
-    <div className="bg-zinc-900/80 border border-zinc-700 rounded-md p-4 overflow-auto max-h-[320px] custom-scrollbar">
-      {body ? (
-        <pre className="text-xs font-mono whitespace-pre-wrap language-json" dangerouslySetInnerHTML={{ __html: renderJsonHtml(body) }} />
-      ) : (
-        <p className="text-xs text-zinc-500 italic">{empty}</p>
-      )}
-    </div>
-  </div>
-)
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Shared table pieces
